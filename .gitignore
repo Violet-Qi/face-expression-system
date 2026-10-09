@@ -1,0 +1,20 @@
+# 大文件（从 GitHub 排除，clone 后按 README 说明补充）
+models/
+lib/onnxruntime/
+
+# 运行时数据
+data/
+node_modules/
+
+# 打包产物
+*.zip
+*.7z
+*.rar
+
+# 系统 / 编辑器
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.log

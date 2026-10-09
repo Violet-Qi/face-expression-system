@@ -1,0 +1,212 @@
+/* ============================================================
+   camera.js —— 摄像头实时识别
+   ------------------------------------------------------------
+   与图片模式共用同一套模型和流程，区别只在输入源是 <video>：
+     · 开启/关闭摄像头、错误代码翻译成中文提示
+     · 连续检测主循环（算完一帧再排下一帧，避免任务堆积）
+     · 检测框按视频"真实画面区域"对齐（处理 object-fit 留白）
+     · 实时信息刷新
+   ============================================================ */
+
+/* ============================================================
+   摄像头实时识别
+   ============================================================ */
+
+/** 把摄像头的错误代码翻译成用户看得懂的中文提示 */
+function cameraErrorMessage(err) {
+  const name = err && err.name ? err.name : '';
+  if (name === 'NotAllowedError' || name === 'SecurityError') {
+    return '摄像头权限被拒绝。请点击浏览器地址栏右侧的摄像头图标，允许本页面使用摄像头后重试。';
+  }
+  if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+    return '没有检测到摄像头设备。请确认电脑已连接摄像头（笔记本请注意是否有物理遮挡开关）。';
+  }
+  if (name === 'NotReadableError' || name === 'TrackStartError') {
+    return '摄像头被其他程序占用了。请关闭正在使用摄像头的软件（如钉钉、腾讯会议、相机应用）后重试。';
+  }
+  if (name === 'OverconstrainedError') {
+    return '摄像头不支持所请求的分辨率。已尝试降级，请重试。';
+  }
+  return '无法打开摄像头：' + (err && err.message ? err.message : '未知错误');
+}
+
+async function startCamera() {
+  // 异常处理：浏览器不支持或不是安全上下文
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showInfo('当前浏览器不支持摄像头，或页面不是通过 localhost / https 打开的。请使用「启动.bat」启动后访问。', true);
+    return;
+  }
+
+  detectBtn.disabled = true;
+  detectBtn.textContent = '正在开启摄像头…';
+
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 640 }, height: { ideal: 480 } },
+      audio: false
+    });
+
+    video.srcObject = cameraStream;
+    await video.play();
+
+    // 画面元素显示出来，占位提示收起
+    video.hidden = false;
+    cameraOverlay.hidden = false;
+    cameraPlaceholder.hidden = true;
+
+    cameraFrames = 0;
+    cameraFpsAt  = performance.now();
+    detectBtn.textContent = '停止摄像头';
+    detectBtn.disabled = false;
+    detectBtn.classList.add('is-stop');
+
+    infoTitle.textContent = '实时识别信息';
+    showInfo('摄像头已开启，正在实时识别…', false);
+
+    cameraLoop();   // 开始连续检测
+
+  } catch (err) {
+    console.error('[摄像头]', err);
+    showInfo(cameraErrorMessage(err), true);
+    await stopCamera();
+  }
+}
+
+async function stopCamera() {
+  if (cameraTimer) { clearTimeout(cameraTimer); cameraTimer = null; }
+  cameraBusy = false;
+
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+  video.srcObject = null;
+  video.hidden = true;
+  cameraOverlay.hidden = true;
+  cameraPlaceholder.hidden = false;
+
+  detectBtn.classList.remove('is-stop');
+  detectBtn.textContent = '开启摄像头';
+  detectBtn.disabled = !modelsReady;
+
+  infoTitle.textContent = '表情识别信息';
+  showInfo('摄像头已关闭。', false);
+  // 清空画布，避免残留最后一帧的检测框
+  const ctx = cameraOverlay.getContext('2d');
+  ctx.clearRect(0, 0, cameraOverlay.width, cameraOverlay.height);
+}
+
+/** 连续检测主循环：算完一帧再排下一帧，避免任务堆积卡死 */
+function cameraLoop() {
+  if (!cameraStream) return;
+
+  (async () => {
+    if (!cameraBusy && video.readyState >= 2) {
+      cameraBusy = true;
+      try {
+        await detectCameraFrame();
+      } catch (err) {
+        console.warn('[摄像头检测]', err);
+      }
+      cameraBusy = false;
+    }
+  })();
+
+  cameraTimer = setTimeout(cameraLoop, CAMERA_INTERVAL);
+}
+
+/** 对摄像头的当前帧做一次检测 + 识别，并把检测框画到叠加层上 */
+async function detectCameraFrame() {
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+  if (!vw || !vh) return;
+
+  // 摄像头模式不需要关键点，少跑一个模型，速度更快
+  const options = new faceapi.TinyFaceDetectorOptions({
+    inputSize: INPUT_SIZE,
+    scoreThreshold: SCORE_TH
+  });
+  const results = await faceapi
+    .detectAllFaces(video, options)
+    .withFaceExpressions();
+
+  // 叠加层的分辨率 = 摄像头画面原始像素（检测框坐标就是这个坐标系下的）
+  if (cameraOverlay.width !== vw || cameraOverlay.height !== vh) {
+    cameraOverlay.width  = vw;
+    cameraOverlay.height = vh;
+  }
+  // 再把叠加层对准视频「真实画面区域」。
+  // 视频用了 object-fit: contain，元素盒子里可能左右或上下有留白，
+  // 直接按元素盒子摆放会让检测框偏心，所以要按宽高比算出真正的画面区域。
+  const wrapRect = cameraOverlay.parentElement.getBoundingClientRect();
+  const vRect    = video.getBoundingClientRect();
+  const aspect   = vw / vh;
+  let dispW = vRect.width;
+  let dispH = vRect.height;
+  if (dispW / dispH > aspect) { dispW = dispH * aspect; } else { dispH = dispW / aspect; }
+  const offX = vRect.left + (vRect.width  - dispW) / 2;
+  const offY = vRect.top  + (vRect.height - dispH) / 2;
+
+  cameraOverlay.style.left   = (offX - wrapRect.left) + 'px';
+  cameraOverlay.style.top    = (offY - wrapRect.top)  + 'px';
+  cameraOverlay.style.width  = dispW + 'px';
+  cameraOverlay.style.height = dispH + 'px';
+
+  const ctx = cameraOverlay.getContext('2d');
+  ctx.clearRect(0, 0, cameraOverlay.width, cameraOverlay.height);
+
+  // 视频被缩小显示时，线宽字号要按比例放大
+  const scale = dispW ? (cameraOverlay.width / dispW) : 1;
+
+  results.forEach((res, i) => {
+    const top = topExpression(res.expressions);
+    drawBox(ctx, res.detection.box, `Face ${i + 1}: ${top.name} ${(top.value * 100).toFixed(1)}%`, scale);
+  });
+
+  // 帧率统计
+  cameraFrames++;
+  const now = performance.now();
+  if (now - cameraFpsAt >= 1000) {
+    const fps = (cameraFrames * 1000 / (now - cameraFpsAt)).toFixed(1);
+    cameraFrames = 0;
+    cameraFpsAt = now;
+    cameraOverlay.dataset.fps = fps;
+  }
+
+  renderCameraInfo(results);
+  // 摄像头模式每秒最多计入一次统计，避免数字虚高
+  if (results.length) addStats(results, 1000);
+}
+
+/** 摄像头模式：把实时结果写进信息框 */
+function renderCameraInfo(results) {
+  infoContent.innerHTML = '';
+
+  const fps = cameraOverlay.dataset.fps || '—';
+  const summary = document.createElement('p');
+  summary.className = 'info-summary';
+  summary.textContent = `实时检测：画面中 ${results.length} 张人脸　|　处理帧率约 ${fps} FPS`;
+  infoContent.appendChild(summary);
+
+  if (!results.length) {
+    const p = document.createElement('p');
+    p.className = 'info-empty';
+    p.textContent = '当前画面中未检测到人脸，请把脸朝向摄像头并保证光线充足。';
+    infoContent.appendChild(p);
+    return;
+  }
+
+  results.forEach((res, i) => {
+    const top = topExpression(res.expressions);
+    const pct = top.value * 100;
+    const row = document.createElement('div');
+    row.className = 'face-row';
+    row.innerHTML =
+      `<span class="face-index">人脸${i + 1}</span>` +
+      `<span class="face-label">${EXPR_CN[top.name] || top.name}</span>` +
+      `<span class="face-bar"><i style="width:${pct.toFixed(1)}%"></i></span>` +
+      `<span class="face-percent">${pct.toFixed(1)}%</span>`;
+    infoContent.appendChild(row);
+  });
+}
+

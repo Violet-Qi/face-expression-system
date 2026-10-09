@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>基于Web平台的人脸表情识别系统</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ============ 页头 ============ -->
+  <header class="page-header">
+    <h1>基于Web平台的人脸表情识别系统</h1>
+    <p class="subtitle">上传照片，识别检测到的人脸表情。结果仅供演示，不能判断真实情绪。</p>
+  </header>
+
+  <!-- ============ 模型加载状态条 ============ -->
+  <div id="modelStatus" class="status-bar status-loading">
+    <span class="status-dot"></span>
+    <span id="modelStatusText">正在加载模型，请稍候…</span>
+  </div>
+
+  <!-- ============ 模式切换 ============ -->
+  <div class="mode-switch" role="tablist">
+    <button type="button" id="tabImage" class="mode-btn is-active" role="tab">图片识别</button>
+    <button type="button" id="tabCamera" class="mode-btn" role="tab">摄像头实时</button>
+  </div>
+
+  <!-- ============================================================
+       页面容器一：图片识别页
+       ------------------------------------------------------------
+       两种模式各自是一个"整块"的页面，切换时整块显示/隐藏
+       （见 js/main.js 的 applyView()）。
+       这样切换只需两行，不用零散地去改十几个元素的显隐。
+       ============================================================ -->
+  <div class="page" id="pageImage">
+
+    <!-- 左右双栏：上传 / 结果 -->
+    <main class="workspace" id="workspaceImage">
+
+      <!-- 左栏：上传图片 -->
+      <section class="panel" id="leftPanel">
+        <div class="panel-title">
+          <span class="panel-icon">🖼</span> <span>上传图片</span>
+        </div>
+        <div class="panel-body">
+          <div id="dropZone" class="drop-zone">
+            <input type="file" id="fileInput" accept="image/*" multiple hidden>
+            <div class="drop-inner" id="dropInner">
+              <div class="drop-icon">＋</div>
+              <p class="drop-text">点击选择图片，或把图片拖到这里</p>
+              <p class="drop-hint">支持 JPG / PNG / WebP / GIF，可一次选多张，每张 10MB 以内</p>
+              <button type="button" class="btn-ghost" id="pickBtn">选择图片</button>
+              <button type="button" class="btn-ghost" id="sampleBtn">用示例图片</button>
+            </div>
+            <img id="sourceImg" class="preview-img" alt="上传的图片" hidden>
+
+            <!-- 选图后出现的操作条：换图 / 清空 / 多张时前后切换 -->
+            <div class="img-bar" id="imgBar" hidden>
+              <button type="button" class="btn-ghost" id="prevBtn" hidden>‹ 上一张</button>
+              <span class="img-index" id="imgIndex"></span>
+              <button type="button" class="btn-ghost" id="nextBtn" hidden>下一张 ›</button>
+              <span class="img-bar-gap"></span>
+              <button type="button" class="btn-ghost" id="replaceBtn">重新选择</button>
+              <button type="button" class="btn-ghost" id="clearImgBtn">清空</button>
+            </div>
+          </div>
+
+          <!-- 批量的进度与统计（只有多张图时才出现） -->
+          <div class="batch-panel" id="batchPanel" hidden>
+            <div class="batch-row">
+              <span id="batchText" class="batch-text"></span>
+              <button type="button" class="btn-ghost" id="batchBtn">批量识别全部</button>
+              <button type="button" class="btn-ghost" id="batchCsvBtn">导出表格</button>
+            </div>
+            <div class="batch-bar"><i id="batchBar"></i></div>
+            <div class="batch-stats" id="batchStats"></div>
+          </div>
+
+          <!-- 人物分组开关：默认关闭，勾选后才加载 6 MB 的识别模型 -->
+          <div class="group-opt">
+            <label class="group-opt-label">
+              <input type="checkbox" id="groupToggle">
+              <span>自动识别人物分组</span>
+            </label>
+            <p class="group-opt-hint">
+              同一张照片里若是同一个人，会用同一种颜色框出并归为一组。
+              <strong>仅判断"像不像"，不识别身份</strong>，不保存任何数据。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 右栏：识别结果 -->
+      <section class="panel">
+        <div class="panel-title">
+          <span class="panel-icon">🔍</span> <span>识别结果</span>
+        </div>
+        <div class="panel-body">
+          <div class="canvas-wrap" id="imageCanvasWrap">
+            <div class="canvas-placeholder" id="resultPlaceholder">
+              <p>识别结果会显示在这里</p>
+            </div>
+            <img id="resultImg" class="preview-img" alt="识别结果" hidden>
+            <canvas id="overlay" hidden></canvas>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- 人物分组结果（只在图片模式提供，所以放在图片页里） -->
+    <section class="group-box" id="groupBox" hidden>
+      <div class="info-title">
+        人物分组结果（共 <span id="groupCount">0</span> 个不同的人）
+      </div>
+      <div class="group-cards" id="groupCards"></div>
+      <p class="group-note" id="groupNote"></p>
+
+      <!-- 跨照片汇总：把多张照片里的人归到一起，标出"哪张照片是谁" -->
+      <div class="gallery-wrap" id="galleryWrap" hidden>
+        <div class="gallery-head">
+          <span class="gallery-title">照片归属汇总</span>
+          <span class="gallery-sub">按人脸特征把 <span id="galleryPhotoCount">0</span> 张照片归到 <span id="galleryPersonCount">0</span> 个人名下</span>
+        </div>
+        <div class="gallery-grid" id="galleryGrid"></div>
+        <p class="gallery-note" id="galleryNote"></p>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============================================================
+       页面容器二：摄像头实时识别页
+       ------------------------------------------------------------
+       摄像头模式不需要上传区，所以这一页只有一块画面，
+       工作区固定单栏（.workspace-single）。
+       ============================================================ -->
+  <div class="page" id="pageCamera" hidden>
+    <main class="workspace workspace-single" id="workspaceCamera">
+      <section class="panel">
+        <div class="panel-title">
+          <span class="panel-icon">🔍</span> <span>摄像头实时画面</span>
+        </div>
+        <div class="panel-body">
+          <div class="canvas-wrap" id="cameraCanvasWrap">
+            <div class="canvas-placeholder" id="cameraPlaceholder">
+              <p>开启摄像头后，这里显示带标注的实时画面</p>
+              <p class="drop-hint">点击下方「开启摄像头」按钮，浏览器会询问是否允许访问</p>
+            </div>
+            <video id="video" autoplay playsinline muted hidden></video>
+            <canvas id="cameraOverlay" hidden></canvas>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ============================================================
+       以下区块两种模式共用，不随页面切换而隐藏：
+       识别信息、累计统计、表情趋势（数据跨模式累加，切模式不清空）
+       ============================================================ -->
+
+  <!-- ============ 识别信息 ============ -->
+  <section class="info-box">
+    <div class="info-title" id="infoTitle">表情识别信息</div>
+    <div id="infoContent" class="info-content">
+      <p class="info-empty">尚未开始识别。</p>
+    </div>
+  </section>
+
+  <!-- ============ 累计统计 ============ -->
+  <section class="stats-box" id="statsBox" hidden>
+    <div class="info-title">本次会话表情统计（累计 <span id="statsTotal">0</span> 张人脸）</div>
+    <div id="statsContent" class="stats-content"></div>
+  </section>
+
+  <!-- ============ 表情趋势（本项目自己实现的功能） ============ -->
+  <!-- 摄像头模式下会随时间不断记录"当前主导表情的置信度"，图片模式下每张图片记一个点。
+       两种模式共用同一份数据，所以切模式不会清空曲线。 -->
+  <section class="trend-box" id="trendBox" hidden>
+    <div class="info-title">
+      表情趋势（已记录 <span id="trendTotal">0</span> 个采样点）
+    </div>
+
+    <div class="trend-canvas-wrap" id="trendWrap">
+      <canvas id="trendCanvas" aria-label="表情趋势折线图"></canvas>
+      <div class="trend-empty" id="trendEmpty">再识别一次，这里就会画出趋势曲线</div>
+    </div>
+
+    <div class="trend-legend" id="trendLegend"></div>
+
+    <div class="trend-footer">
+      <div class="trend-note" id="trendNote">
+        纵轴是当前主导表情的置信度；线的颜色代表该时刻识别出的表情。
+      </div>
+      <div class="trend-actions">
+        <button type="button" class="btn-ghost" id="trendCsvBtn">导出 CSV</button>
+        <button type="button" class="btn-ghost" id="trendClearBtn">清空趋势</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 主按钮 ============ -->
+  <button type="button" id="detectBtn" class="btn-primary" disabled>开始识别</button>
+
+  <footer class="page-footer">
+    本系统所有计算均在你的浏览器本地完成，图片和摄像头画面都不会上传到任何服务器。
+  </footer>
+
+  <!-- face-api.js 主库（已内置 TensorFlow.js，无需联网） -->
+  <script src="lib/face-api.js"></script>
+
+  <!-- 业务代码按职责拆成 9 个文件。
+       顺序有讲究：config 提供全局配置与状态，其余文件都要用它；
+       main.js 必须最后 —— 它会在加载时"立即"绑定事件，
+       所以要保证前面所有文件里的函数都已经定义好了。
+       详见 代码导读.md -->
+  <script src="js/config.js"></script>
+  <script src="js/models.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/image-select.js"></script>
+  <script src="js/recognize.js"></script>
+  <script src="js/camera.js"></script>
+  <script src="js/stats-trend.js"></script>
+  <script src="js/grouping.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

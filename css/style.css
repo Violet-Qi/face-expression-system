@@ -1,0 +1,900 @@
+/* ============================================================
+   基于Web平台的人脸表情识别系统 —— 样式表
+   设计要点：统一配色 / 统一间距 / 清晰的加载与错误反馈 / 响应式
+   ============================================================ */
+
+/* ---------- 全局变量：改配色只需要改这里 ---------- */
+:root {
+  --bg:            #f4f6f8;   /* 页面底色 */
+  --card:          #ffffff;   /* 卡片底色 */
+  --border:        #e3e7ec;   /* 边框 */
+  --border-strong: #d3d9e0;
+  --text:          #1f2328;   /* 主文字 */
+  --text-muted:    #6b7683;   /* 次要文字 */
+  --primary:       #ff7a1a;   /* 主色（橙色按钮） */
+  --primary-hover: #ec6a0c;
+  --primary-press: #d75f08;
+  --success:       #17a34a;
+  --danger:        #d93a3a;
+  --radius:        8px;
+  --shadow:        0 1px 2px rgba(16, 24, 40, .04), 0 1px 3px rgba(16, 24, 40, .06);
+}
+
+* { box-sizing: border-box; }
+
+/* 保证 hidden 属性一定生效：否则下面的 .preview-img{display:block} 会把它覆盖掉，
+   导致没选图片时页面上出现一个「碎图」图标 */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Segoe UI", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  /* 页面留白统一，并限制最大宽度，避免大屏上过宽 */
+  padding: 28px 20px 48px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+/* ---------------- 页头 ---------------- */
+.page-header { margin-bottom: 18px; }
+
+.page-header h1 {
+  margin: 0 0 6px;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: .5px;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ---------------- 状态条 ---------------- */
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex: none;
+}
+
+.status-loading .status-dot { background: #e8a33d; animation: pulse 1.2s infinite; }
+.status-ok      .status-dot { background: var(--success); }
+.status-error   .status-dot { background: var(--danger); }
+
+.status-ok    { border-color: #cbe9d6; background: #f3fbf6; }
+.status-error { border-color: #f2cccb; background: #fdf4f4; color: #8a2523; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .25; }
+}
+
+/* ---------------- 模式切换 ---------------- */
+.mode-switch {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 4px;
+  background: #eaeef2;
+  border-radius: var(--radius);
+  width: fit-content;
+}
+
+.mode-btn {
+  font-family: inherit;
+  font-size: 14px;
+  padding: 8px 22px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+
+.mode-btn:hover { color: var(--text); }
+
+.mode-btn.is-active {
+  background: #fff;
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: var(--shadow);
+}
+
+/* ---------------- 摄像头画面 ---------------- */
+/* 视频撑满面板宽度播放（画面流畅）；检测框由叠加的 canvas 绘制。
+   注意：这里用了 object-fit: contain，视频元素盒子里可能有留白，
+   所以 JS 里要按"真实画面区域"来摆放叠加层，否则框会偏。 */
+.canvas-wrap video {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 560px;
+  object-fit: contain;
+  background: transparent;
+  border-radius: 4px;
+}
+
+.canvas-wrap video[hidden] { display: none !important; }
+
+/* ---------------- 人物分组结果卡片 ---------------- */
+.group-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.group-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+/* 每个"人"一张卡片：上面一排小头像，下面是编号与统计。
+   刻意用纵向排列：同一人如果有很多张脸，横向排列会把文字挤没了。 */
+.person-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  background: #fbfcfd;
+  min-width: 180px;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.person-thumbs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.person-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+  background: #eef1f4;
+  flex: none;
+}
+
+/* 同一个人的后续小头像小一点，一眼看出"这几张是一个人" */
+.person-thumb.is-mini {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  opacity: .92;
+}
+
+.person-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  width: 100%;
+}
+
+.person-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  padding: 1px 9px;
+  border-radius: 9px;
+  align-self: flex-start;
+  white-space: nowrap;
+}
+
+.person-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  /* 不再 nowrap：宁可换行也不要被截断成看不懂的半句 */
+  word-break: break-word;
+}
+
+.group-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
+.group-note strong { color: #b4530a; }
+
+/* ---------------- 跨照片归属汇总 ---------------- */
+.gallery-wrap {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.gallery-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.gallery-title { font-size: 13px; font-weight: 600; }
+.gallery-sub { font-size: 12px; color: var(--text-muted); }
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 10px;
+}
+
+/* 每张照片一格：缩略图 + 归属标签 */
+.gallery-item {
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fbfcfd;
+  display: flex;
+  flex-direction: column;
+}
+
+.gallery-thumb {
+  width: 100%;
+  height: 96px;
+  object-fit: cover;
+  display: block;
+  background: #eef1f4;
+}
+
+.gallery-thumb.is-empty {
+  background: repeating-linear-gradient(45deg, #f4f6f8, #f4f6f8 8px, #eceff3 8px, #eceff3 16px);
+}
+
+.gallery-meta {
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.gallery-file {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 归属标签：人物N 用该人物的颜色，未检出用灰色 */
+.gallery-tag {
+  font-size: 11px;
+  color: #fff;
+  background: #8a94a0;
+  padding: 1px 7px;
+  border-radius: 8px;
+  align-self: flex-start;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gallery-tag.is-none { background: #b9c2cc; }
+
+.gallery-note {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.8;
+}
+
+/* ---------------- 累计统计 ---------------- */
+.stats-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.stats-content { display: block; }
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.stat-label {
+  flex: none;
+  width: 66px;
+  font-size: 13px;
+}
+
+.stat-bar {
+  flex: 1;
+  height: 10px;
+  background: #eef1f4;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.stat-bar > i {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  transition: width .25s;
+}
+
+.stat-count {
+  flex: none;
+  width: 92px;
+  text-align: right;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- 双栏工作区 ---------------- */
+.workspace {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+/* 摄像头页：只有一块画面，固定单栏。
+   图片页用默认的双栏（见上面的 .workspace）。 */
+.workspace-single {
+  grid-template-columns: 1fr;
+}
+
+/* 页面容器：两种模式各是一整页，同一时间只显示一页。
+   切换由 js/main.js 的 applyView() 统一负责。 */
+.page[hidden] { display: none !important; }
+
+/* 窄屏（手机/平板竖屏）自动变成上下排列 */
+@media (max-width: 760px) {
+  .workspace { grid-template-columns: 1fr; }
+}
+
+/* ---------------- 面板卡片 ---------------- */
+.panel {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: #fafbfc;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.panel-icon { font-size: 13px; }
+
+.panel-body {
+  padding: 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;   /* 上传区与下面的批量面板 / 分组开关上下排列 */
+  align-items: stretch;
+}
+
+/* ---------------- 上传区 ---------------- */
+.drop-zone {
+  position: relative;
+  width: 100%;
+  min-height: 300px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 6px;
+  /* 纵向排列 + 居中：提示文字居中；选中图片后是「图片 + 操作条」上下两行 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 10px;
+  transition: border-color .15s, background .15s;
+  overflow: hidden;
+}
+
+/* 选中图片后，内容靠上排列，避免图片被 vertical 居中后和操作条挤在一起 */
+.drop-zone.has-image {
+  justify-content: flex-start;
+  padding: 12px;
+}
+
+/* 图片和操作条都需要能收缩；不加 min-width:0 的话长内容会把布局撑破 */
+.drop-zone > * { min-width: 0; max-width: 100%; }
+
+/* 选图后提示收起，操作条独占一行放在图片下方 */
+.drop-zone .img-bar { width: 100%; margin-top: 10px; }
+
+/* 拖拽悬停时高亮，给用户明确反馈 */
+.drop-zone.dragover {
+  border-color: var(--primary);
+  background: #fff7f0;
+}
+
+.drop-inner {
+  text-align: center;
+  padding: 24px 18px;
+}
+
+.drop-icon {
+  font-size: 30px;
+  color: #b9c2cc;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.drop-text  { margin: 0 0 4px; font-size: 14px; }
+.drop-hint  { margin: 0 0 16px; font-size: 12px; color: var(--text-muted); }
+
+.btn-ghost {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 7px 16px;
+  margin: 0 4px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+
+.btn-ghost:hover { background: #f3f5f7; border-color: #c2cad3; }
+
+/* ---------------- 图片与画布 ---------------- */
+/* 用 max-width/max-height + auto 尺寸，让 img 元素盒子刚好等于图片可见区域，
+   这样叠加在上面的 canvas 才能和图片像素级对齐（用 object-fit 会产生留白导致错位） */
+.preview-img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 420px;
+  margin: 0 auto;
+}
+
+.canvas-wrap {
+  position: relative;
+  z-index: 0;            /* 建立独立层叠上下文，保证 canvas 一定盖在图片上面 */
+  width: 100%;
+  min-height: 300px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #fcfcfd;
+}
+
+/* canvas 叠在图片/视频上方；位置与尺寸由 JS 按媒体元素的实际显示区域设定 */
+.canvas-wrap canvas {
+  position: absolute;
+  z-index: 1;            /* 必须高于图片/视频，否则识别框会被盖住 */
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+/* 占位提示：撑满宽度并居中，否则文字会被挤成窄窄的几行 */
+.canvas-placeholder {
+  width: 100%;
+  padding: 0 24px;
+  color: #aab3bd;
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.9;
+}
+
+.canvas-placeholder p { margin: 0; }
+.canvas-placeholder .drop-hint { margin-top: 6px; font-size: 12px; }
+
+/* ---------------- 识别信息框 ---------------- */
+.info-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  min-height: 96px;
+}
+
+.info-title {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.info-empty { margin: 0; color: #aab3bd; font-size: 13px; }
+
+.info-error { margin: 0; color: var(--danger); font-size: 13px; }
+
+.info-summary {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* 每一张人脸的识别结果 */
+.face-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  border-top: 1px solid #f0f2f5;
+}
+
+.face-row:first-of-type { border-top: none; }
+
+.face-index {
+  flex: none;
+  width: 52px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.face-label {
+  flex: none;
+  min-width: 66px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.face-bar {
+  flex: 1;
+  height: 8px;
+  background: #eef1f4;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.face-bar > i {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+  border-radius: 4px;
+}
+
+.face-percent {
+  flex: none;
+  width: 58px;
+  text-align: right;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------- 表情趋势折线图 ---------------- */
+.trend-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+/* 用 align-items:stretch，让 canvas 把自己撑满整行宽度 */
+.trend-canvas-wrap {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-height: 180px;
+}
+
+.trend-canvas-wrap canvas {
+  width: 100%;
+  height: 180px;
+  background: #fcfcfd;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+/* 只有一个采样点时还画不出线，用居中提示盖住空图 */
+.trend-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #aab3bd;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+/* 图例：只列出这次真正出现过的表情，避免七个色块排一长串没用的 */
+.trend-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 10px;
+}
+
+.trend-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.trend-legend-dot {
+  width: 10px;
+  height: 4px;
+  border-radius: 2px;
+  flex: none;
+}
+
+.trend-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.trend-note {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.trend-actions { display: flex; gap: 8px; flex: none; }
+
+/* ---------------- 换图操作条 ---------------- */
+.img-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.img-bar .btn-ghost { flex: 0 0 auto; white-space: nowrap; }
+
+.img-bar-gap { flex: 1; }
+
+.img-index {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* 选图后图片可以再点一次直接换图 */
+.drop-zone.has-image .preview-img { cursor: pointer; }
+
+/* 拖拽新图时的高亮：这时候整个区域都可以接收 */
+.drop-zone.has-image.dragover { background: #fff7f0; }
+
+/* ---------------- 批量识别 ---------------- */
+.batch-panel {
+  width: 100%;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.batch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;      /* 窄的时候按钮换行，不要被压成竖排 */
+}
+
+/* 关键：给文字留出收缩空间，否则长句子会把按钮挤成竖排 */
+.batch-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.batch-row .btn-ghost {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.batch-bar {
+  height: 6px;
+  background: #eef1f4;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.batch-bar > i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--primary);
+  border-radius: 3px;
+  transition: width .25s;
+}
+
+.batch-stats {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.9;
+}
+
+.batch-stats .bs-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.batch-stats .bs-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* ---------------- 人物分组开关 ---------------- */
+.group-opt {
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+  padding-top: 10px;
+  width: 100%;
+}
+
+.group-opt-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.group-opt-label input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.group-opt-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.7;
+}
+
+.group-opt-hint strong { color: #b4530a; }
+
+/* 分组结果的组号标签 */
+.face-group {
+  flex: none;
+  font-size: 12px;
+  padding: 1px 7px;
+  border-radius: 9px;
+  color: #fff;
+  white-space: nowrap;
+}
+
+/* 分组说明条 */
+.group-summary {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.group-warn { color: #b4530a; }
+
+.group-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 6px 0 8px;
+}
+
+.group-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+}
+
+.group-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* ---------------- 主按钮 ---------------- */
+.btn-primary {
+  display: block;
+  width: 100%;
+  padding: 15px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: #fff;
+  background: var(--primary);
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.btn-primary:hover:not(:disabled)  { background: var(--primary-hover); }
+.btn-primary:active:not(:disabled) { background: var(--primary-press); }
+
+.btn-primary:disabled {
+  background: #d8dde3;
+  cursor: not-allowed;
+  letter-spacing: 2px;
+}
+
+/* 摄像头运行中，主按钮变成"停止"的红色样式，状态一眼可辨 */
+.btn-primary.is-stop {
+  background: #d93a3a;
+}
+
+.btn-primary.is-stop:hover:not(:disabled) { background: #c22f2f; }
+
+/* ---------------- 页脚 ---------------- */
+.page-footer {
+  margin-top: 14px;
+  font-size: 12px;
+  color: #9aa4af;
+  text-align: center;
+}
