@@ -70,21 +70,11 @@ function showImageAt(idx) {
   currentFile = item.file;
 
   sourceImg.src = item.url;
-  sourceImg.hidden = false;
-  dropInner.hidden = true;
-  dropZone.classList.add('has-image');
-
-  // 操作条：一张时不显示前后切换，多张时才显示
-  imgBar.hidden = false;
   const many = images.length > 1;
-  prevBtn.hidden = !many;
-  nextBtn.hidden = !many;
   imgIndex.textContent = many ? `第 ${currentIdx + 1} / ${images.length} 张` : '';
 
   // 右侧结果区回到"待识别"状态
-  resultImg.hidden = true;
-  overlay.hidden = true;
-  resultPlaceholder.hidden = false;
+  ui.resultShown = false;
   resultPlaceholder.innerHTML = '<p>图片已就绪，点击下方按钮开始识别</p>';
 
   infoContent.innerHTML = '<p class="info-empty">尚未开始识别。</p>';
@@ -94,6 +84,7 @@ function showImageAt(idx) {
 
   renderBatch();
   updateButtonState();
+  renderView();        // 显隐统一交给 renderView（原来这里有 9 处 .hidden）
 }
 
 /** 前后切换（到头的另一头回绕，省得用户点着点着发现按钮点了没反应） */
@@ -115,15 +106,9 @@ function clearImages() {
   batchResults = [];
   batchRunning = false;
 
-  sourceImg.hidden = true;
   sourceImg.removeAttribute('src');
-  dropInner.hidden = false;
-  dropZone.classList.remove('has-image');
-  imgBar.hidden = true;
 
-  resultImg.hidden = true;
-  overlay.hidden = true;
-  resultPlaceholder.hidden = false;
+  ui.resultShown = false;
   resultPlaceholder.innerHTML = '<p>识别结果会显示在这里</p>';
 
   infoContent.innerHTML = '<p class="info-empty">尚未开始识别。</p>';
@@ -133,5 +118,6 @@ function clearImages() {
 
   renderBatch();
   updateButtonState();
+  renderView();        // 显隐统一交给 renderView（原来这里有 7 处 .hidden）
 }
 

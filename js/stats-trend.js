@@ -35,11 +35,11 @@ function addStats(results, minIntervalMs) {
   recordTrend(results);
 }
 
-/** 把统计结果渲染成横向条形图 */
+/** 把统计结果渲染成横向条形图。
+    面板本身的显隐由 renderView() 按 stats.total 统一决定，这里只管内容。 */
 function renderStats() {
-  if (stats.total === 0) { statsBox.hidden = true; return; }
+  if (stats.total === 0) { statsContent.innerHTML = ''; renderView(); return; }
 
-  statsBox.hidden = false;
   statsTotal.textContent = stats.total;
   statsContent.innerHTML = '';
 
@@ -62,6 +62,8 @@ function renderStats() {
       `<span class="stat-count">${count} 次（${share}%）</span>`;
     statsContent.appendChild(row);
   });
+
+  renderView();   // 统计面板该显示了
 }
 
 /* ============================================================
@@ -122,12 +124,12 @@ function recordTrend(results) {
 
 /** 更新趋势面板的标题数字、底部状态文字和"导出/清空"按钮可用性 */
 function updateTrendMeta(faceCount, dominantName) {
-  trendBox.hidden = trendData.length === 0;
-
+  // 面板显隐交给 renderView()，这里只更新内容与按钮可用性
   if (trendData.length === 0) {
     trendTotal.textContent = '0';
     trendCsvBtn.disabled = true;
     trendClearBtn.disabled = true;
+    renderView();
     return;
   }
 
@@ -153,26 +155,27 @@ function scheduleTrendDraw() {
   }, TREND_REDRAW_MS);
 }
 
-/** 按当前数据决定是画曲线还是显示"数据不够"提示 */
+/** 按当前数据决定是画曲线还是显示"数据不够"提示。
+    面板与提示文字的显隐由 renderView() 按 trendData.length 统一决定，这里只管内容。 */
 function renderTrend() {
   if (trendData.length === 0) {
-    trendBox.hidden = true;
     trendPlot = null;
+    renderView();
     return;
   }
 
   // 只有一个点连不成线，直接提示，避免画出一张只有孤点的空图
   if (trendData.length < 2) {
-    trendEmpty.hidden = false;
     trendEmpty.textContent = '再识别一次，这里就会画出趋势曲线';
     renderTrendLegend();
+    renderView();
     return;
   }
 
-  trendEmpty.hidden = true;
   trendPlot = buildTrendPlot();
   drawTrendChart(trendPlot);
   renderTrendLegend();
+  renderView();
 }
 
 /** 把原始采样点换算成绘图用的坐标（与画布实际尺寸无关，只算 0~1 的比值） */

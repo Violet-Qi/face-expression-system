@@ -53,13 +53,13 @@
               <button type="button" class="btn-ghost" id="pickBtn">选择图片</button>
               <button type="button" class="btn-ghost" id="sampleBtn">用示例图片</button>
             </div>
-            <img id="sourceImg" class="preview-img" alt="上传的图片" hidden>
+            <img id="sourceImg" class="preview-img" alt="上传的图片">
 
             <!-- 选图后出现的操作条：换图 / 清空 / 多张时前后切换 -->
-            <div class="img-bar" id="imgBar" hidden>
-              <button type="button" class="btn-ghost" id="prevBtn" hidden>‹ 上一张</button>
+            <div class="img-bar" id="imgBar">
+              <button type="button" class="btn-ghost" id="prevBtn">‹ 上一张</button>
               <span class="img-index" id="imgIndex"></span>
-              <button type="button" class="btn-ghost" id="nextBtn" hidden>下一张 ›</button>
+              <button type="button" class="btn-ghost" id="nextBtn">下一张 ›</button>
               <span class="img-bar-gap"></span>
               <button type="button" class="btn-ghost" id="replaceBtn">重新选择</button>
               <button type="button" class="btn-ghost" id="clearImgBtn">清空</button>
@@ -67,7 +67,7 @@
           </div>
 
           <!-- 批量的进度与统计（只有多张图时才出现） -->
-          <div class="batch-panel" id="batchPanel" hidden>
+          <div class="batch-panel" id="batchPanel">
             <div class="batch-row">
               <span id="batchText" class="batch-text"></span>
               <button type="button" class="btn-ghost" id="batchBtn">批量识别全部</button>
@@ -101,15 +101,15 @@
             <div class="canvas-placeholder" id="resultPlaceholder">
               <p>识别结果会显示在这里</p>
             </div>
-            <img id="resultImg" class="preview-img" alt="识别结果" hidden>
-            <canvas id="overlay" hidden></canvas>
+            <img id="resultImg" class="preview-img" alt="识别结果">
+            <canvas id="overlay"></canvas>
           </div>
         </div>
       </section>
     </main>
 
     <!-- 人物分组结果（只在图片模式提供，所以放在图片页里） -->
-    <section class="group-box" id="groupBox" hidden>
+    <section class="group-box" id="groupBox">
       <div class="info-title">
         人物分组结果（共 <span id="groupCount">0</span> 个不同的人）
       </div>
@@ -117,7 +117,7 @@
       <p class="group-note" id="groupNote"></p>
 
       <!-- 跨照片汇总：把多张照片里的人归到一起，标出"哪张照片是谁" -->
-      <div class="gallery-wrap" id="galleryWrap" hidden>
+      <div class="gallery-wrap" id="galleryWrap">
         <div class="gallery-head">
           <span class="gallery-title">照片归属汇总</span>
           <span class="gallery-sub">按人脸特征把 <span id="galleryPhotoCount">0</span> 张照片归到 <span id="galleryPersonCount">0</span> 个人名下</span>
@@ -134,7 +134,7 @@
        摄像头模式不需要上传区，所以这一页只有一块画面，
        工作区固定单栏（.workspace-single）。
        ============================================================ -->
-  <div class="page" id="pageCamera" hidden>
+  <div class="page" id="pageCamera">
     <main class="workspace workspace-single" id="workspaceCamera">
       <section class="panel">
         <div class="panel-title">
@@ -146,8 +146,8 @@
               <p>开启摄像头后，这里显示带标注的实时画面</p>
               <p class="drop-hint">点击下方「开启摄像头」按钮，浏览器会询问是否允许访问</p>
             </div>
-            <video id="video" autoplay playsinline muted hidden></video>
-            <canvas id="cameraOverlay" hidden></canvas>
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="cameraOverlay"></canvas>
           </div>
         </div>
       </section>
@@ -168,7 +168,7 @@
   </section>
 
   <!-- ============ 累计统计 ============ -->
-  <section class="stats-box" id="statsBox" hidden>
+  <section class="stats-box" id="statsBox">
     <div class="info-title">本次会话表情统计（累计 <span id="statsTotal">0</span> 张人脸）</div>
     <div id="statsContent" class="stats-content"></div>
   </section>
@@ -176,7 +176,7 @@
   <!-- ============ 表情趋势（本项目自己实现的功能） ============ -->
   <!-- 摄像头模式下会随时间不断记录"当前主导表情的置信度"，图片模式下每张图片记一个点。
        两种模式共用同一份数据，所以切模式不会清空曲线。 -->
-  <section class="trend-box" id="trendBox" hidden>
+  <section class="trend-box" id="trendBox">
     <div class="info-title">
       表情趋势（已记录 <span id="trendTotal">0</span> 个采样点）
     </div>

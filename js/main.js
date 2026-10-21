@@ -13,6 +13,116 @@
    ============================================================ */
 
 /**
+ * ★ 全项目唯一的「状态 → 界面」映射处 ★
+ *
+ * 所有元素的显示/隐藏、选中态、按钮文案，都在这一个函数里决定。
+ * 业务函数（选图、识别、开关摄像头、分组、统计…）**只改数据和 ui 里的标志，
+ * 不要自己写 .hidden = ...**，最后调一次 renderView() 让界面跟上。
+ *
+ * 好处：
+ *   · "这一屏到底该长什么样"只有一处答案，不用去十几个函数里拼
+ *   · 加一个新面板，只改这里一处
+ *   · 界面和行为分离，测试也能直接验证"状态对不对"而不是"谁最后写了 hidden"
+ *
+ * 判定依据全部是现成的数据，不新增影子状态：
+ *   images.length     有没有选图 / 是不是多张
+ *   stats.total       有没有累计统计
+ *   trendData.length  有没有趋势数据（1 个点时连不成线，显示提示）
+ *   ui.*              推导不出来的几项（见 js/config.js 的 ui 注释）
+ */
+function renderView() {
+  const cam      = (mode === 'camera');
+  const hasImage = images.length > 0;
+  const multi    = images.length > 1;
+
+  /* ---- 1. 页面：两种模式各一整页，整块切换 ---- */
+  pageImage.hidden  = cam;
+  pageCamera.hidden = !cam;
+  tabImage.classList.toggle('is-active', !cam);
+  tabCamera.classList.toggle('is-active', cam);
+
+  /* ---- 2. 顶部状态 / 主按钮 / 信息区标题（两页共用，文案随模式变）---- */
+  infoTitle.textContent = cam ? '实时识别信息' : '表情识别信息';
+
+  // 主按钮文案要分清三种情况，不能一律写成"开始识别"：
+  //   · 图片模式            → 开始识别
+  //   · 摄像头模式未开启    → 开启摄像头
+  //   · 摄像头模式已开启    → 停止摄像头
+  // 另外识别过程中文案是"识别中…"，由 runDetect 自己接管，这里不能覆盖。
+  if (!busy) {
+    detectBtn.textContent = cam
+      ? (ui.cameraLive ? '停止摄像头' : '开启摄像头')
+      : '开始识别';
+  }
+  detectBtn.classList.toggle('is-stop', ui.cameraLive);
+
+  /* ---- 3. 上传区：没选图时显示提示，选了图就显示图片 + 操作条 ---- */
+  sourceImg.hidden = !hasImage;
+  dropInner.hidden = hasImage;
+  dropZone.classList.toggle('has-image', hasImage);
+  imgBar.hidden    = !hasImage;
+  prevBtn.hidden   = !multi;          // 只有多张时才需要前后切换
+  nextBtn.hidden   = !multi;
+  batchPanel.hidden = !multi;         // 单张时不显示批量面板
+
+  /* ---- 4. 右侧结果画布：识别过才把图片和画布露出来 ---- */
+  resultImg.hidden         = !ui.resultShown;
+  overlay.hidden           = !ui.resultShown;
+  resultPlaceholder.hidden = ui.resultShown;
+
+  /* ---- 5. 摄像头画面：出图时显示 video + 画布，否则显示占位提示 ---- */
+  video.hidden             = !ui.cameraLive;
+  cameraOverlay.hidden     = !ui.cameraLive;
+  cameraPlaceholder.hidden = ui.cameraLive;
+
+  /* ---- 6. 累计统计：有数据才显示 ---- */
+  statsBox.hidden = (stats.total === 0);
+
+  /* ---- 7. 表情趋势：没数据整块不显示；只有 1 个点时提示"再识别一次" ---- */
+  trendBox.hidden   = (trendData.length === 0);
+  trendEmpty.hidden = (trendData.length !== 1);
+
+  /* ---- 8. 人物分组 / 跨照片归属 ---- */
+  groupBox.hidden    = !ui.groupShown;
+  galleryWrap.hidden = !ui.galleryShown;
+}
+
+/**
+ * 让页面容器从「上一页的高度」平滑过渡到自身高度。
+ *
+ * 为什么要这么做：两个页面高度不一样（实测图片页 460px、摄像头页 368px），
+ * 直接切换会让下方共用的区块瞬移 92px，看起来像"跳"了一下。
+ * 过渡高度可以让它滑动过去。
+ *
+ * 注意：不能简单给 height 设 auto —— auto 不参与 transition。
+ * 标准做法是「先设起始高度 → 强制回流 → 再设目标高度 → 动画结束后清掉内联值」。
+ */
+function animatePageHeight(el, fromHeight) {
+  const targetHeight = el.scrollHeight;      // 此刻 height 还是 auto，取到的是自然高度
+  if (!fromHeight || Math.abs(fromHeight - targetHeight) < 1) {
+    el.style.height = '';                    // 高度没变，不需要动画
+    return;
+  }
+
+  el.classList.add('is-animating');
+  el.style.height = fromHeight + 'px';
+  void el.offsetHeight;                      // 强制回流，让浏览器认下起始值
+  el.style.height = targetHeight + 'px';
+
+  // 动画结束（或超时兜底）后清掉内联高度，恢复 auto，避免影响后续布局
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    el.style.height = '';
+    el.classList.remove('is-animating');
+    clearTimeout(timer);
+  };
+  const timer = setTimeout(finish, 400);
+  el.addEventListener('transitionend', finish, { once: true });
+}
+
+/**
  * 唯一的「状态 → 界面」映射处。
  *
  * 布局相关的显隐**全部**由 mode 推导出来，不要在别处零散地写
@@ -25,24 +135,25 @@
  * 注意：下面这些区块**两种模式共用、刻意不切**：
  *   info-box（识别信息）、statsBox（累计统计）、trendBox（表情趋势）
  * 它们的数据跨模式累加，切模式不该清空（趋势曲线的数据是同一个数组）。
+ *
+ * @param {boolean} animate 是否做高度过渡（启动时不需要，切换时需要）
  */
-function applyView() {
+function applyView(animate) {
   const cam = (mode === 'camera');
+  const from = cam ? pageImage : pageCamera;   // 即将隐藏的那一页
+  const to   = cam ? pageCamera : pageImage;   // 即将显示的那一页
 
-  // 页面整块切换
-  pageImage.hidden  = cam;
-  pageCamera.hidden = !cam;
+  // 记下旧页面的高度，用于高度过渡（必须在隐藏之前取）
+  const fromHeight = (animate && !from.hidden) ? from.offsetHeight : 0;
 
-  // 模式按钮的选中态
-  tabImage.classList.toggle('is-active', !cam);
-  tabCamera.classList.toggle('is-active', cam);
+  renderView();                                // 唯一的「状态 → 界面」映射
 
-  // 主按钮的文案与样式（按钮是两页共用的，只有文案随模式变）
-  detectBtn.textContent = cam ? '开启摄像头' : '开始识别';
-  detectBtn.classList.remove('is-stop');
-
-  // 识别信息框的标题
-  infoTitle.textContent = cam ? '实时识别信息' : '表情识别信息';
+  // 切换时做一次高度过渡，让下方共用区块平滑滑动而不是瞬跳
+  if (animate && fromHeight) {
+    animatePageHeight(to, fromHeight);
+  } else {
+    to.style.height = '';
+  }
 }
 
 function switchMode(target) {
@@ -50,7 +161,7 @@ function switchMode(target) {
   mode = target;
 
   if (target === 'camera') {
-    applyView();
+    applyView(true);                   // true = 带高度过渡
     detectBtn.disabled = !modelsReady;
     showInfo('点击下方「开启摄像头」开始实时识别。', false);
 
@@ -58,7 +169,7 @@ function switchMode(target) {
     // 切回图片模式时，务必关掉摄像头，释放设备
     if (cameraStream) stopCamera();
 
-    applyView();
+    applyView(true);
     if (!lastResults) showInfo('尚未开始识别。', false);
     updateButtonState();
   }
@@ -269,6 +380,12 @@ async function loadPhotoSet(urls) {
 }
 
 /* ---------------- 启动 ---------------- */
+// 脚本都在 body 末尾，执行到这里时 DOM 已经全部解析完，
+// 所以可以**立即**按状态摆好界面，不必等 DOMContentLoaded。
+// 正因如此，index.html 里不需要任何 hidden 属性来表达初始状态 ——
+// 所有显隐一律由 renderView() 负责，只有这一个来源。
+applyView(false);              // false = 启动时不做高度动画
+
 window.addEventListener('DOMContentLoaded', initModels);
 
 /* ------------------------------------------------------------

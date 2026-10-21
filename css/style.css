@@ -138,8 +138,6 @@ body {
   border-radius: 4px;
 }
 
-.canvas-wrap video[hidden] { display: none !important; }
-
 /* ---------------- 人物分组结果卡片 ---------------- */
 .group-box {
   background: var(--card);
@@ -258,58 +256,10 @@ body {
   gap: 10px;
 }
 
-/* 每张照片一格：缩略图 + 归属标签 */
-.gallery-item {
-  border: 2px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  background: #fbfcfd;
-  display: flex;
-  flex-direction: column;
-}
-
-.gallery-thumb {
-  width: 100%;
-  height: 96px;
-  object-fit: cover;
-  display: block;
-  background: #eef1f4;
-}
-
-.gallery-thumb.is-empty {
-  background: repeating-linear-gradient(45deg, #f4f6f8, #f4f6f8 8px, #eceff3 8px, #eceff3 16px);
-}
-
-.gallery-meta {
-  padding: 6px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.gallery-file {
-  font-size: 11px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* 归属标签：人物N 用该人物的颜色，未检出用灰色 */
-.gallery-tag {
-  font-size: 11px;
-  color: #fff;
-  background: #8a94a0;
-  padding: 1px 7px;
-  border-radius: 8px;
-  align-self: flex-start;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.gallery-tag.is-none { background: #b9c2cc; }
+/* 说明：照片墙里的每一格实际复用 .person-card / .person-thumbs / .person-meta
+   那一套样式（见 js/grouping.js 的 renderGallery），所以早期为照片墙单独写的
+   .gallery-item / .gallery-thumb / .gallery-meta / .gallery-file / .gallery-tag
+   已经没有任何元素使用，已删除。 */
 
 .gallery-note {
   margin: 10px 0 0;
@@ -382,8 +332,26 @@ body {
 }
 
 /* 页面容器：两种模式各是一整页，同一时间只显示一页。
-   切换由 js/main.js 的 applyView() 统一负责。 */
-.page[hidden] { display: none !important; }
+   切换由 js/main.js 的 renderView() / applyView() 统一负责。
+   显隐统一靠全局的 [hidden] 规则（见文件顶部），这里不用再重复写。 */
+
+/* 切换模式时的高度过渡。
+   为什么要动「高度」而不是 transform？
+   两个页面高度不一样（实测图片页 460px、摄像头页 368px），切换时下方共用的
+   区块（识别信息 / 统计 / 趋势 / 主按钮）会整体位移 92px。这 92px 是**真实布局
+   占位**的变化，transform 只改视觉不改布局，治不了它。过渡高度才能让下方内容
+   跟着平滑滑动，而不是瞬间跳。
+   overflow:hidden 只在动画期间生效，避免平时裁掉面板外阴影。 */
+.page.is-animating {
+  overflow: hidden;
+  transition: height 280ms cubic-bezier(.4, 0, .2, 1),
+              opacity 200ms ease;
+}
+
+/* 尊重系统的「减少动态效果」设置 */
+@media (prefers-reduced-motion: reduce) {
+  .page.is-animating { transition: none; }
+}
 
 /* 窄屏（手机/平板竖屏）自动变成上下排列 */
 @media (max-width: 760px) {
@@ -834,8 +802,6 @@ body {
   font-size: 13px;
   color: var(--text-muted);
 }
-
-.group-warn { color: #b4530a; }
 
 .group-legend {
   display: flex;

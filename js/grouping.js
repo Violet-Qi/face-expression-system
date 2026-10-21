@@ -53,7 +53,8 @@ function makeFaceThumb(imgEl, box, size) {
 function renderGroupCards(results, groups) {
   if (!groupBox) return;
   if (!groups || !results || results.length < 2) {
-    groupBox.hidden = true;
+    ui.groupShown = false;
+    renderView();
     return;
   }
 
@@ -130,18 +131,20 @@ function renderGroupCards(results, groups) {
   }
   groupNote.textContent = note + '（仅判断"像不像"，不识别身份，不保存任何数据）';
 
-  groupBox.hidden = false;
+  ui.groupShown = true;
+  renderView();
 }
 
 /** 清空人物分组卡片区 */
 function clearGroupCards() {
   if (!groupBox) return;
-  groupBox.hidden = true;
+  ui.groupShown = false;
+  ui.galleryShown = false;
   groupCards.innerHTML = '';
   groupNote.textContent = '';
-  if (galleryWrap) galleryWrap.hidden = true;
   if (galleryGrid) galleryGrid.innerHTML = '';
   if (galleryNote) galleryNote.textContent = '';
+  renderView();
 }
 
 /* ============================================================
@@ -216,7 +219,8 @@ function renderGallery() {
   if (!galleryWrap) return;
 
   if (!galleryData || !galleryData.totalFaces) {
-    galleryWrap.hidden = true;
+    ui.galleryShown = false;
+    renderView();
     return;
   }
 
@@ -312,7 +316,8 @@ function renderGallery() {
   note += ' 所有特征只存在于当前页面的内存中，刷新即清空。';
   galleryNote.textContent = note;
 
-  galleryWrap.hidden = false;
+  ui.galleryShown = true;
+  renderView();
 }
 
 /**

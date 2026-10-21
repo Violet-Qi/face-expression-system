@@ -141,6 +141,21 @@ let groupEnabled  = false;   // 用户是否勾选了"自动识别人物分组"
 let descriptorNetReady = false;  // 识别模型是否已加载
 let lastGroups    = null;    // 最近一次的分组结果，resize 重画时要用
 
+/* ---------------- 视图状态 ----------------
+   这里只放**推导不出来、必须显式记**的几项。
+   其余显隐（有没有选图、是不是多张、有没有统计、有没有趋势、哪个模式…）
+   由 js/main.js 的 renderView() 直接从上面的数据算出来。
+
+   约定：业务函数只改数据 / 改这里的标志，**不要自己写 .hidden = ...**，
+   最后调一次 renderView() 让界面跟上。
+   —— 这样"界面长什么样"只在一个函数里决定，不会被十几个地方各改一遍。 */
+const ui = {
+  resultShown:  false,   // 右侧结果画布是否已切到「显示图片 + 画布」
+  cameraLive:   false,   // 摄像头是否正在出画面
+  groupShown:   false,   // 人物分组结果区是否显示
+  galleryShown: false    // 跨照片归属汇总区是否显示
+};
+
 /* ---------------- DOM 引用 ---------------- */
 const $ = id => document.getElementById(id);
 

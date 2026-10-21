@@ -49,19 +49,16 @@ async function startCamera() {
     video.srcObject = cameraStream;
     await video.play();
 
-    // 画面元素显示出来，占位提示收起
-    video.hidden = false;
-    cameraOverlay.hidden = false;
-    cameraPlaceholder.hidden = true;
+    // 画面元素显示出来、占位提示收起、按钮变成"停止" —— 这些显隐统一交给 renderView
+    ui.cameraLive = true;
 
     cameraFrames = 0;
     cameraFpsAt  = performance.now();
     detectBtn.textContent = '停止摄像头';
     detectBtn.disabled = false;
-    detectBtn.classList.add('is-stop');
 
-    infoTitle.textContent = '实时识别信息';
     showInfo('摄像头已开启，正在实时识别…', false);
+    renderView();
 
     cameraLoop();   // 开始连续检测
 
@@ -81,16 +78,15 @@ async function stopCamera() {
     cameraStream = null;
   }
   video.srcObject = null;
-  video.hidden = true;
-  cameraOverlay.hidden = true;
-  cameraPlaceholder.hidden = false;
 
-  detectBtn.classList.remove('is-stop');
-  detectBtn.textContent = '开启摄像头';
+  // 画面回到占位提示、按钮去掉"停止"样式 —— 统一交给 renderView
+  ui.cameraLive = false;
+
   detectBtn.disabled = !modelsReady;
 
-  infoTitle.textContent = '表情识别信息';
   showInfo('摄像头已关闭。', false);
+  renderView();
+
   // 清空画布，避免残留最后一帧的检测框
   const ctx = cameraOverlay.getContext('2d');
   ctx.clearRect(0, 0, cameraOverlay.width, cameraOverlay.height);

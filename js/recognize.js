@@ -84,9 +84,8 @@ async function recognizeCurrentImage(draw) {
   } else {
     await new Promise(res => { resultImg.onload = res; });
   }
-  resultImg.hidden = false;
-  overlay.hidden = false;
-  resultPlaceholder.hidden = true;
+  ui.resultShown = true;     // 右侧画布切到"显示图片 + 画布"
+  renderView();
 
   // 2) 关键代码：一次调用完成「检测人脸 → 关键点 → 表情分类」
   //    如果开了"人物分组"，再往链条后面接一步「算 128 维特征」
@@ -278,16 +277,18 @@ async function runBatch() {
   if (galleryData) {
     renderGallery();
     redrawCurrentWithCrossPhotoLabels();
-    if (groupBox && galleryData) groupBox.hidden = false;
+    // 有跨照片数据时，人物分组区要显示出来（哪怕当前这张图只有 1 张脸）
+    if (galleryData) ui.groupShown = true;
     // 标题统一用跨照片的人数，避免出现"标题 0 个、下面却说 4 个"的矛盾。
     // （必须在 renderGroupCards 之后设置 —— 它会把标题改成当前照片的人数）
     const crossCount = galleryData.groups.filter(g => g.photos.length).length;
     if (groupCount) groupCount.textContent = crossCount;
-  } else if (galleryWrap) {
-    galleryWrap.hidden = true;
+  } else {
+    ui.galleryShown = false;
   }
 
   updateButtonState();
+  renderView();
 }
 
 /** 导出批量识别的汇总结果（每张图一行） */
@@ -326,11 +327,10 @@ function exportBatchCsv() {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** 渲染批量面板：进度、缩略统计、导出按钮 */
+/** 渲染批量面板：进度、缩略统计、导出按钮。
+    面板本身的显隐由 renderView() 按「是否多张」统一决定，这里只管内容。 */
 function renderBatch() {
   const total = images.length;
-  // 只有多张图时才显示批量面板；单张时不打扰用户
-  batchPanel.hidden = total < 2;
   if (total < 2) {
     batchStats.innerHTML = '';
     return;
