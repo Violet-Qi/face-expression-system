@@ -31,25 +31,32 @@
  *   ui.*              推导不出来的几项（见 js/config.js 的 ui 注释）
  */
 function renderView() {
+  const isImg    = (mode === 'image');
   const cam      = (mode === 'camera');
+  const isVid    = (mode === 'video');
   const hasImage = images.length > 0;
   const multi    = images.length > 1;
 
-  /* ---- 1. 页面：两种模式各一整页，整块切换 ---- */
-  pageImage.hidden  = cam;
+  /* ---- 1. 页面：三种模式各一整页，整块切换 ---- */
+  pageImage.hidden  = !isImg;
   pageCamera.hidden = !cam;
-  tabImage.classList.toggle('is-active', !cam);
+  pageVideo.hidden  = !isVid;
+  tabImage.classList.toggle('is-active', isImg);
   tabCamera.classList.toggle('is-active', cam);
+  tabVideo.classList.toggle('is-active', isVid);
 
-  /* ---- 2. 顶部状态 / 主按钮 / 信息区标题（两页共用，文案随模式变）---- */
-  infoTitle.textContent = cam ? '实时识别信息' : '表情识别信息';
+  /* ---- 2. 顶部状态 / 主按钮 / 信息区标题（三页共用，文案随模式变）---- */
+  infoTitle.textContent = cam ? '实时识别信息' : (isVid ? '视频分析信息' : '表情识别信息');
+
+  // 主按钮只在图片/摄像头模式用；视频文件页有自己的「选择视频 / 中止分析」按钮。
+  detectBtn.hidden = isVid;
 
   // 主按钮文案要分清三种情况，不能一律写成"开始识别"：
   //   · 图片模式            → 开始识别
   //   · 摄像头模式未开启    → 开启摄像头
   //   · 摄像头模式已开启    → 停止摄像头
   // 另外识别过程中文案是"识别中…"，由 runDetect 自己接管，这里不能覆盖。
-  if (!busy) {
+  if (!busy && !isVid) {
     detectBtn.textContent = cam
       ? (ui.cameraLive ? '停止摄像头' : '开启摄像头')
       : '开始识别';
@@ -75,16 +82,26 @@ function renderView() {
   cameraOverlay.hidden     = !ui.cameraLive;
   cameraPlaceholder.hidden = ui.cameraLive;
 
-  /* ---- 6. 累计统计：有数据才显示 ---- */
+  /* ---- 6. 视频文件画面：载入视频后显示 video + 画布 ---- */
+  videoFile.hidden        = !ui.videoShown;
+  videoOverlay.hidden     = !ui.videoShown;
+  videoPlaceholder.hidden = ui.videoShown;
+  videoStopBtn.hidden     = !videoAnalyzing;
+  videoProgressWrap.hidden = !videoAnalyzing;
+
+  /* ---- 7. 累计统计：有数据才显示 ---- */
   statsBox.hidden = (stats.total === 0);
 
-  /* ---- 7. 表情趋势：没数据整块不显示；只有 1 个点时提示"再识别一次" ---- */
+  /* ---- 8. 表情趋势：没数据整块不显示；只有 1 个点时提示"再识别一次" ---- */
   trendBox.hidden   = (trendData.length === 0);
   trendEmpty.hidden = (trendData.length !== 1);
 
-  /* ---- 8. 人物分组 / 跨照片归属 ---- */
+  /* ---- 9. 人物分组 / 跨照片归属 ---- */
   groupBox.hidden    = !ui.groupShown;
   galleryWrap.hidden = !ui.galleryShown;
+
+  /* ---- 10. 上传预览图上的打码层（左侧也要脱敏，否则"右边打码左边露脸"）---- */
+  renderPreviewMask();
 }
 
 /**
@@ -128,25 +145,30 @@ function animatePageHeight(el, fromHeight) {
  * 布局相关的显隐**全部**由 mode 推导出来，不要在别处零散地写
  * .hidden = true/false —— 那样加一个新面板就要满地找地方改。
  *
- * 两个页面（pageImage / pageCamera）是整体切换的，页面内部的标题
- * （「识别结果」/「摄像头实时画面」）是各自页面里的静态文字，
+ * 三个页面（pageImage / pageCamera / pageVideo）是整体切换的，页面内部的标题
+ * （「识别结果」/「摄像头实时画面」/「视频文件逐帧分析」）是各自页面里的静态文字，
  * 所以这里不需要再改任何文字标签。
  *
- * 注意：下面这些区块**两种模式共用、刻意不切**：
+ * 注意：下面这些区块**三种模式共用、刻意不切**：
  *   info-box（识别信息）、statsBox（累计统计）、trendBox（表情趋势）
  * 它们的数据跨模式累加，切模式不该清空（趋势曲线的数据是同一个数组）。
  *
  * @param {boolean} animate 是否做高度过渡（启动时不需要，切换时需要）
  */
 function applyView(animate) {
-  const cam = (mode === 'camera');
-  const from = cam ? pageImage : pageCamera;   // 即将隐藏的那一页
-  const to   = cam ? pageCamera : pageImage;   // 即将显示的那一页
+  const pages = { image: pageImage, camera: pageCamera, video: pageVideo };
+  const to = pages[mode] || pageImage;                 // 即将显示的那一页
+
+  // 找出当前正在显示、且不是目标的那一页（用于取旧高度做过渡）
+  let from = null;
+  Object.keys(pages).forEach(k => {
+    if (pages[k] !== to && !pages[k].hidden) from = pages[k];
+  });
 
   // 记下旧页面的高度，用于高度过渡（必须在隐藏之前取）
-  const fromHeight = (animate && !from.hidden) ? from.offsetHeight : 0;
+  const fromHeight = (animate && from) ? from.offsetHeight : 0;
 
-  renderView();                                // 唯一的「状态 → 界面」映射
+  renderView();                                        // 唯一的「状态 → 界面」映射
 
   // 切换时做一次高度过渡，让下方共用区块平滑滑动而不是瞬跳
   if (animate && fromHeight) {
@@ -158,18 +180,30 @@ function applyView(animate) {
 
 function switchMode(target) {
   if (target === mode) return;
+  const prev = mode;
   mode = target;
 
+  // 离开摄像头模式：务必关掉摄像头，释放设备
+  if (prev === 'camera' && cameraStream) stopCamera();
+
+  // 离开视频页：中止正在跑的分析，否则它会继续占着 CPU
+  if (prev === 'video' && videoAnalyzing) abortVideoAnalysis();
+
+  applyView(true);                   // true = 带高度过渡
+
   if (target === 'camera') {
-    applyView(true);                   // true = 带高度过渡
     detectBtn.disabled = !modelsReady;
     showInfo('点击下方「开启摄像头」开始实时识别。', false);
 
-  } else {
-    // 切回图片模式时，务必关掉摄像头，释放设备
-    if (cameraStream) stopCamera();
+  } else if (target === 'video') {
+    showInfo(
+      videoReady
+        ? '视频已载入，点「开始分析」逐帧识别。'
+        : '点「选择本地视频」载入一段短视频，然后逐帧识别表情（不会上传）。',
+      false
+    );
 
-    applyView(true);
+  } else {
     if (!lastResults) showInfo('尚未开始识别。', false);
     updateButtonState();
   }
@@ -190,6 +224,19 @@ function updateButtonState() {
 // 模式切换
 tabImage.addEventListener('click', () => switchMode('image'));
 tabCamera.addEventListener('click', () => switchMode('camera'));
+tabVideo.addEventListener('click', () => switchMode('video'));
+
+// 视频文件：选片 / 中止分析
+pickVideoBtn.addEventListener('click', () => videoInput.click());
+videoInput.addEventListener('change', e => {
+  const f = e.target.files && e.target.files[0];
+  if (f) acceptVideoFile(f);
+  e.target.value = '';        // 允许连续选同一个文件
+});
+videoStopBtn.addEventListener('click', () => {
+  abortVideoAnalysis();
+  showInfo('已请求中止分析…', false);
+});
 
 // 点击选择文件（支持一次多选）
 $('pickBtn').addEventListener('click', () => fileInput.click());
@@ -264,6 +311,23 @@ groupToggle.addEventListener('change', () => {
     }
   }
   updateButtonState();
+});
+
+// 人脸脱敏开关：只影响显示，原图不动
+maskToggle.addEventListener('change', () => {
+  maskEnabled = maskToggle.checked;
+
+  // 打码会同时影响结果画布、左侧预览图、所有小头像，所以要整体重画一遍。
+  // 摄像头模式不用管：下一帧（400ms 内）会自己带上打码。
+  if (mode === 'image' && lastResults) {
+    drawResults(lastResults, lastGroups);   // 内部会顺带刷新左侧预览图的打码层
+    if (lastGroups) renderGroupCards(lastResults, lastGroups);
+    if (galleryData) {
+      renderGallery();
+      redrawCurrentWithCrossPhotoLabels();
+    }
+  }
+  renderView();   // 没有识别结果时也要让打码层跟着收起/出现
 });
 
 // 趋势面板：导出 / 清空

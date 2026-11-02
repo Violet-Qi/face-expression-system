@@ -16,8 +16,9 @@
  * minIntervalMs：最小统计间隔。摄像头模式每帧都识别，
  * 如果每帧都累加，14 秒就能记出上百张脸，数字没有意义，
  * 所以摄像头模式每秒最多统计一次。
+ * srcEl：像素来源（图片模式不传；摄像头传 video；视频文件传它自己的 video 元素）
  */
-function addStats(results, minIntervalMs) {
+function addStats(results, minIntervalMs, srcEl) {
   const now = performance.now();
   if (minIntervalMs && now - statsLastAt < minIntervalMs) return;
   statsLastAt = now;
@@ -32,7 +33,7 @@ function addStats(results, minIntervalMs) {
 
   // 被计入统计的这一次识别，同时也记进趋势曲线
   // （放在限流判断之后，所以趋势曲线和累计统计的节奏完全一致，不会虚高）
-  recordTrend(results);
+  recordTrend(results, srcEl);
 }
 
 /** 把统计结果渲染成横向条形图。
@@ -86,16 +87,21 @@ function sortFacesLeftToRight(results) {
  * 记录一个趋势采样点。
  * 每个点记一张人脸：一次识别里如果有多张脸，就记多个点（同一条时间轴上）。
  */
-function recordTrend(results) {
+function recordTrend(results, srcEl) {
   if (!results || !results.length) return;
 
-  const exprName = mode === 'camera' ? 'video' : 'resultImg';
-  const msrc = exprName === 'video' ? video : resultImg;
+  // 像素来源：图片模式是 resultImg；摄像头和视频文件都是 <video>
+  const msrc = srcEl || (mode === 'camera' ? video : resultImg);
+  const exprName = (msrc && msrc.tagName === 'VIDEO') ? 'video' : 'resultImg';
   const sz = mediaSize(msrc);
 
   const faces = sortFacesLeftToRight(results);
   const now = performance.now();
   if (!trendStartAt) trendStartAt = now;
+
+  // 视频文件分析时，横轴要用"视频里的时间"而不是"跑了多久"，
+  // 否则一秒一帧的曲线会被压缩成处理耗时，看起来毫无意义。
+  const timeMs = (trendTimeOverride !== null) ? trendTimeOverride : (now - trendStartAt);
 
   let dominantName = 'neutral', dominantVal = -1;
   faces.forEach(res => {
@@ -104,7 +110,7 @@ function recordTrend(results) {
     if (top.value > dominantVal) { dominantVal = top.value; dominantName = top.name; }
 
     trendData.push({
-      time:      now - trendStartAt,
+      time:      timeMs,
       faces:     faces.length,
       imageW:    sz.w,
       imageH:    sz.h,

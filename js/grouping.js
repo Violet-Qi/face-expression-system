@@ -38,6 +38,8 @@ function makeFaceThumb(imgEl, box, size) {
   } catch (err) {
     return null;
   }
+  // 小头像也是人脸，开了打码就一起盖住，否则脱敏会被头像绕过去
+  if (maskEnabled) mosaicCanvas(c, Math.max(4, Math.round(size / 12)));
   try {
     return c.toDataURL('image/png');
   } catch (err) {

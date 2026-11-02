@@ -24,6 +24,7 @@
   <div class="mode-switch" role="tablist">
     <button type="button" id="tabImage" class="mode-btn is-active" role="tab">图片识别</button>
     <button type="button" id="tabCamera" class="mode-btn" role="tab">摄像头实时</button>
+    <button type="button" id="tabVideo" class="mode-btn" role="tab">视频文件</button>
   </div>
 
   <!-- ============================================================
@@ -54,7 +55,8 @@
               <button type="button" class="btn-ghost" id="sampleBtn">用示例图片</button>
             </div>
             <img id="sourceImg" class="preview-img" alt="上传的图片">
-
+            <!-- 打码层：盖在预览图上，只在开启「人脸打码」时出现 -->
+            <canvas id="maskOverlay" class="mask-overlay" hidden></canvas>
             <!-- 选图后出现的操作条：换图 / 清空 / 多张时前后切换 -->
             <div class="img-bar" id="imgBar">
               <button type="button" class="btn-ghost" id="prevBtn">‹ 上一张</button>
@@ -155,6 +157,47 @@
   </div>
 
   <!-- ============================================================
+       页面容器三：视频文件逐帧分析
+       ------------------------------------------------------------
+       把本地短视频载入 <video>，每 0.5 秒 seek 一帧做识别。
+       视频不会上传，全部在浏览器里处理。
+       ============================================================ -->
+  <div class="page" id="pageVideo">
+    <main class="workspace workspace-single">
+      <section class="panel">
+        <div class="panel-title">
+          <span class="panel-icon">🎬</span> <span>视频文件逐帧分析</span>
+        </div>
+        <div class="panel-body">
+
+          <!-- 选片条 -->
+          <div class="video-bar">
+            <button type="button" class="btn-ghost" id="pickVideoBtn">选择本地视频</button>
+            <input type="file" id="videoInput" accept="video/*" hidden>
+            <span class="video-name" id="videoName">未选择视频</span>
+            <button type="button" class="btn-ghost" id="videoStopBtn" hidden>中止分析</button>
+          </div>
+
+          <!-- 分析进度 -->
+          <div class="batch-bar video-progress" id="videoProgressWrap" hidden><i id="videoBar"></i></div>
+          <div class="video-stats" id="videoStats"></div>
+
+          <!-- 画面 + 检测框 -->
+          <div class="canvas-wrap" id="videoCanvasWrap">
+            <div class="canvas-placeholder" id="videoPlaceholder">
+              <p>选择一段本地短视频，这里会逐帧显示检测结果</p>
+              <p class="drop-hint">视频不会上传，全部在你的浏览器里分析</p>
+            </div>
+            <video id="videoFile" playsinline muted hidden></video>
+            <canvas id="videoOverlay" hidden></canvas>
+          </div>
+
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ============================================================
        以下区块两种模式共用，不随页面切换而隐藏：
        识别信息、累计统计、表情趋势（数据跨模式累加，切模式不清空）
        ============================================================ -->
@@ -199,6 +242,15 @@
     </div>
   </section>
 
+  <!-- ============ 人脸脱敏开关（两种模式共用） ============ -->
+  <div class="mask-opt">
+    <label class="mask-opt-label">
+      <input type="checkbox" id="maskToggle">
+      <span>人脸打码（保护隐私）</span>
+    </label>
+    <span class="mask-opt-hint">开启后，画面里的人脸和下方的小头像都会做马赛克处理。只影响显示，原图不动、不上传。</span>
+  </div>
+
   <!-- ============ 主按钮 ============ -->
   <button type="button" id="detectBtn" class="btn-primary" disabled>开始识别</button>
 
@@ -209,7 +261,7 @@
   <!-- face-api.js 主库（已内置 TensorFlow.js，无需联网） -->
   <script src="lib/face-api.js"></script>
 
-  <!-- 业务代码按职责拆成 9 个文件。
+  <!-- 业务代码按职责拆成 10 个文件。
        顺序有讲究：config 提供全局配置与状态，其余文件都要用它；
        main.js 必须最后 —— 它会在加载时"立即"绑定事件，
        所以要保证前面所有文件里的函数都已经定义好了。
@@ -220,6 +272,7 @@
   <script src="js/image-select.js"></script>
   <script src="js/recognize.js"></script>
   <script src="js/camera.js"></script>
+  <script src="js/video.js"></script>
   <script src="js/stats-trend.js"></script>
   <script src="js/grouping.js"></script>
   <script src="js/main.js"></script>

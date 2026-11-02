@@ -131,22 +131,8 @@ async function detectCameraFrame() {
     cameraOverlay.width  = vw;
     cameraOverlay.height = vh;
   }
-  // 再把叠加层对准视频「真实画面区域」。
-  // 视频用了 object-fit: contain，元素盒子里可能左右或上下有留白，
-  // 直接按元素盒子摆放会让检测框偏心，所以要按宽高比算出真正的画面区域。
-  const wrapRect = cameraOverlay.parentElement.getBoundingClientRect();
-  const vRect    = video.getBoundingClientRect();
-  const aspect   = vw / vh;
-  let dispW = vRect.width;
-  let dispH = vRect.height;
-  if (dispW / dispH > aspect) { dispW = dispH * aspect; } else { dispH = dispW / aspect; }
-  const offX = vRect.left + (vRect.width  - dispW) / 2;
-  const offY = vRect.top  + (vRect.height - dispH) / 2;
-
-  cameraOverlay.style.left   = (offX - wrapRect.left) + 'px';
-  cameraOverlay.style.top    = (offY - wrapRect.top)  + 'px';
-  cameraOverlay.style.width  = dispW + 'px';
-  cameraOverlay.style.height = dispH + 'px';
+  // 再把叠加层对准视频「真实画面区域」（object-fit: contain 可能留白）
+  const dispW = syncOverlayToVideo(cameraOverlay, video);
 
   const ctx = cameraOverlay.getContext('2d');
   ctx.clearRect(0, 0, cameraOverlay.width, cameraOverlay.height);
@@ -156,6 +142,10 @@ async function detectCameraFrame() {
 
   results.forEach((res, i) => {
     const top = topExpression(res.expressions);
+
+    // 开了打码就先盖住人脸，再画框和标签
+    if (maskEnabled) mosaicFaceRect(ctx, video, res.detection.box);
+
     drawBox(ctx, res.detection.box, `Face ${i + 1}: ${top.name} ${(top.value * 100).toFixed(1)}%`, scale);
   });
 

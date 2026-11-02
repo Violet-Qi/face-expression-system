@@ -141,6 +141,20 @@ let groupEnabled  = false;   // 用户是否勾选了"自动识别人物分组"
 let descriptorNetReady = false;  // 识别模型是否已加载
 let lastGroups    = null;    // 最近一次的分组结果，resize 重画时要用
 
+/* 人脸脱敏：开启后把画面上的人脸和所有小头像都做马赛克处理。
+   只是"显示层"的处理 —— 原图不动、不上传、也不落盘。 */
+let maskEnabled   = false;
+
+/* 视频文件逐帧分析。
+   trendTimeOverride 不为 null 时，趋势曲线的横轴改用这个值（毫秒），
+   让时间轴表示"视频里播到第几秒"，而不是"我们跑了多久"。 */
+let videoAnalyzing    = false;   // 是否正在分析
+let videoAbortAt      = 0;       // 非 0 表示用户请求中止
+let videoReady        = false;   // 是否已载入视频文件
+let videoMeta         = null;    // { name, duration, width, height }
+let videoSummary      = null;    // 分析结束后的汇总 { frames, faceFrames, faces, topName, topCount }
+let trendTimeOverride = null;
+
 /* ---------------- 视图状态 ----------------
    这里只放**推导不出来、必须显式记**的几项。
    其余显隐（有没有选图、是不是多张、有没有统计、有没有趋势、哪个模式…）
@@ -152,6 +166,7 @@ let lastGroups    = null;    // 最近一次的分组结果，resize 重画时�
 const ui = {
   resultShown:  false,   // 右侧结果画布是否已切到「显示图片 + 画布」
   cameraLive:   false,   // 摄像头是否正在出画面
+  videoShown:   false,   // 视频文件页是否已载入视频（显示画面而不是占位提示）
   groupShown:   false,   // 人物分组结果区是否显示
   galleryShown: false    // 跨照片归属汇总区是否显示
 };
@@ -159,20 +174,35 @@ const ui = {
 /* ---------------- DOM 引用 ---------------- */
 const $ = id => document.getElementById(id);
 
-/* 页面容器：图片页 / 摄像头页，由 applyView() 整块切换。
-   这两个替代了以前零散的 leftPanel.hidden、workspace.classList('is-camera')、
+/* 页面容器：图片页 / 摄像头页 / 视频文件页，由 renderView() 整块切换。
+   这三个替代了以前零散的 leftPanel.hidden、workspace.classList('is-camera')、
    imageCanvasWrap.hidden、cameraCanvasWrap.hidden 等等。 */
 const pageImage          = $('pageImage');
 const pageCamera         = $('pageCamera');
+const pageVideo          = $('pageVideo');
 
 const modelStatus       = $('modelStatus');
 const modelStatusText   = $('modelStatusText');
 const tabImage          = $('tabImage');
 const tabCamera         = $('tabCamera');
+const tabVideo          = $('tabVideo');
+
+/* ---- 视频文件页 ---- */
+const videoFile         = $('videoFile');
+const videoOverlay      = $('videoOverlay');
+const videoInput        = $('videoInput');
+const pickVideoBtn      = $('pickVideoBtn');
+const videoStopBtn      = $('videoStopBtn');
+const videoName         = $('videoName');
+const videoBar          = $('videoBar');
+const videoProgressWrap = $('videoProgressWrap');
+const videoStats        = $('videoStats');
+const videoPlaceholder  = $('videoPlaceholder');
 const dropZone          = $('dropZone');
 const dropInner         = $('dropInner');
 const fileInput         = $('fileInput');
 const sourceImg         = $('sourceImg');
+const maskOverlay       = $('maskOverlay');
 const video             = $('video');
 const resultImg         = $('resultImg');
 const overlay           = $('overlay');
@@ -195,6 +225,7 @@ const trendNote         = $('trendNote');
 const trendCsvBtn       = $('trendCsvBtn');
 const trendClearBtn     = $('trendClearBtn');
 const groupToggle       = $('groupToggle');
+const maskToggle        = $('maskToggle');
 const imgBar            = $('imgBar');
 const imgIndex          = $('imgIndex');
 const prevBtn           = $('prevBtn');
