@@ -48,20 +48,22 @@ function renderView() {
   /* ---- 2. 顶部状态 / 主按钮 / 信息区标题（三页共用，文案随模式变）---- */
   infoTitle.textContent = cam ? '实时识别信息' : (isVid ? '视频分析信息' : '表情识别信息');
 
-  // 主按钮只在图片/摄像头模式用；视频文件页有自己的「选择视频 / 中止分析」按钮。
-  detectBtn.hidden = isVid;
+  // 主按钮三个页面共用。
+  // 曾经这里写成 detectBtn.hidden = isVid —— 而视频页的提示却写着"点下方「开始分析」"，
+  // 结果那个按钮根本不存在，analyzeVideo() 从来没有被调用过，视频功能完全无法启动。
+  detectBtn.hidden = false;
 
-  // 主按钮文案要分清三种情况，不能一律写成"开始识别"：
-  //   · 图片模式            → 开始识别
-  //   · 摄像头模式未开启    → 开启摄像头
-  //   · 摄像头模式已开启    → 停止摄像头
-  // 另外识别过程中文案是"识别中…"，由 runDetect 自己接管，这里不能覆盖。
-  if (!busy && !isVid) {
+  // 主按钮文案要分清三个模式：
+  //   · 图片模式        → 开始识别
+  //   · 摄像头模式      → 未开启=开启摄像头 / 已开启=停止摄像头
+  //   · 视频模式        → 未分析=开始分析 / 分析中=中止分析
+  // 另外图片识别过程中文案是"识别中…"，由 runDetect 自己接管，这里不能覆盖。
+  if (!busy) {
     detectBtn.textContent = cam
       ? (ui.cameraLive ? '停止摄像头' : '开启摄像头')
-      : '开始识别';
+      : (isVid ? (videoAnalyzing ? '中止分析' : '开始分析') : '开始识别');
   }
-  detectBtn.classList.toggle('is-stop', ui.cameraLive);
+  detectBtn.classList.toggle('is-stop', cam ? ui.cameraLive : (isVid && videoAnalyzing));
 
   /* ---- 3. 上传区：没选图时显示提示，选了图就显示图片 + 操作条 ---- */
   sourceImg.hidden = !hasImage;
@@ -209,8 +211,13 @@ function switchMode(target) {
   }
 }
 
-/** 图片模式下按钮可用性：模型就绪 + 有图片 + 不在识别中 */
+/** 主按钮可用性：图片模式=有图，视频模式=已载入视频；摄像头模式不限制 */
 function updateButtonState() {
+  if (mode === 'video') {
+    // 已载入视频、或正在分析（此时按钮是「中止分析」，要能点）才可点
+    detectBtn.disabled = !(modelsReady && (videoReady || videoAnalyzing));
+    return;
+  }
   if (mode !== 'image') return;
   detectBtn.disabled = !(modelsReady && hasImage() && !busy);
   batchBtn.disabled = !(modelsReady && images.length > 1 && !busy && !batchRunning);
@@ -286,14 +293,20 @@ window.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') { gotoNextImage(); }
 });
 
-// 主按钮：图片模式=开始识别，摄像头模式=开启/停止摄像头
+// 主按钮：图片=开始识别，摄像头=开启/停止，视频=开始分析/中止分析
 detectBtn.addEventListener('click', () => {
   if (mode === 'camera') {
     if (cameraStream) stopCamera();
     else startCamera();
-  } else {
-    runDetect();
+    return;
   }
+  if (mode === 'video') {
+    // 视频页：没在分析就开跑，正在分析就中止
+    if (videoAnalyzing) abortVideoAnalysis();
+    else analyzeVideo();
+    return;
+  }
+  runDetect();
 });
 
 // 人物分组开关：只记住用户的意愿，模型等真正识别时才懒加载
