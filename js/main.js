@@ -330,6 +330,14 @@ maskToggle.addEventListener('change', () => {
   renderView();   // 没有识别结果时也要让打码层跟着收起/出现
 });
 
+// 匿名统计上报开关：只影响上报，不影响识别
+if (reportToggle) reportToggle.addEventListener('change', () => {
+  setReportEnabled(reportToggle.checked);
+  showInfo(reportToggle.checked
+    ? '已允许上报匿名统计（只含表情计数与人数，不含图片）。'
+    : '已关闭匿名统计上报，之后不会再发送任何数据。', false);
+});
+
 // 趋势面板：导出 / 清空
 trendCsvBtn.addEventListener('click', exportTrendCsv);
 trendClearBtn.addEventListener('click', clearTrend);
@@ -448,7 +456,19 @@ async function loadPhotoSet(urls) {
 // 所以可以**立即**按状态摆好界面，不必等 DOMContentLoaded。
 // 正因如此，index.html 里不需要任何 hidden 属性来表达初始状态 ——
 // 所有显隐一律由 renderView() 负责，只有这一个来源。
-applyView(false);              // false = 启动时不做高度动画
+// 第一件事就是把界面摆对（只显示图片页）。这样即使后面任何一步出问题，
+// 也不会出现"几个页面同时露出来"的坏状态。
+try {
+  applyView(false);            // false = 启动时不做高度动画
+} catch (err) {
+  console.error("[启动] 界面初始化失败：", err);
+}
+
+// 匿名统计：先探一次后端在不在（只用 Python 起静态服务时会探不到，那就静默关掉）
+if (typeof reportToggle !== 'undefined' && reportToggle) reportToggle.checked = reportEnabled;
+probeReportBackend().then(ok => {
+  if (!ok) console.info('[report] 未检测到后端接口，匿名统计上报已自动关闭（不影响识别）。');
+});
 
 window.addEventListener('DOMContentLoaded', initModels);
 

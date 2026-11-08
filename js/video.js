@@ -155,6 +155,8 @@ function abortVideoAnalysis() {
 async function analyzeVideo() {
   if (videoAnalyzing || !videoReady || !modelsReady) return;
 
+  const tStarted = performance.now();
+
   videoAnalyzing = true;
   videoAbortAt = 0;
   videoSummary = null;
@@ -232,6 +234,16 @@ async function analyzeVideo() {
     });
     videoSummary = { frames: frameIdx, faceFrames, faces: faceTotal, topName, topCount };
 
+    // 匿名统计上报（整段视频一次）
+    reportSession('video', {
+      faces: faceTotal,
+      top: Object.keys(exprCount).length ? topName : null,
+      topVal: null,
+      costMs: Math.round(performance.now() - tStarted),
+      durMs: Math.round(dur * 1000),
+      expr: exprCount
+    });
+
     if (videoBar) videoBar.style.width = (frameIdx / total * 100) + '%';
 
     // 分析结束时立刻把曲线画出来。
@@ -283,7 +295,7 @@ function drawVideoFrameResults(results) {
   results.forEach((res, i) => {
     const top = topExpression(res.expressions);
     if (maskEnabled) mosaicFaceRect(ctx, videoFile, res.detection.box);
-    drawBox(ctx, res.detection.box, `Face ${i + 1}: ${top.name} ${(top.value * 100).toFixed(1)}%`, scale);
+    drawBox(ctx, res.detection.box, faceLabel(i, top, -1), scale);
   });
 }
 

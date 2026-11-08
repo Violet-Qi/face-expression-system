@@ -17,10 +17,12 @@
  * 如果每帧都累加，14 秒就能记出上百张脸，数字没有意义，
  * 所以摄像头模式每秒最多统计一次。
  * srcEl：像素来源（图片模式不传；摄像头传 video；视频文件传它自己的 video 元素）
+ * @returns {boolean} 这次是否真的计入了（被限流跳过时返回 false）。
+ *   摄像头模式要按"同一个口径"累计本次会话用于上报，所以需要这个返回值。
  */
 function addStats(results, minIntervalMs, srcEl) {
   const now = performance.now();
-  if (minIntervalMs && now - statsLastAt < minIntervalMs) return;
+  if (minIntervalMs && now - statsLastAt < minIntervalMs) return false;
   statsLastAt = now;
 
   results.forEach(res => {
@@ -34,6 +36,7 @@ function addStats(results, minIntervalMs, srcEl) {
   // 被计入统计的这一次识别，同时也记进趋势曲线
   // （放在限流判断之后，所以趋势曲线和累计统计的节奏完全一致，不会虚高）
   recordTrend(results, srcEl);
+  return true;
 }
 
 /** 把统计结果渲染成横向条形图。

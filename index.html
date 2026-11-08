@@ -136,7 +136,7 @@
        摄像头模式不需要上传区，所以这一页只有一块画面，
        工作区固定单栏（.workspace-single）。
        ============================================================ -->
-  <div class="page" id="pageCamera">
+  <div class="page" id="pageCamera" hidden>
     <main class="workspace workspace-single" id="workspaceCamera">
       <section class="panel">
         <div class="panel-title">
@@ -162,7 +162,7 @@
        把本地短视频载入 <video>，每 0.5 秒 seek 一帧做识别。
        视频不会上传，全部在浏览器里处理。
        ============================================================ -->
-  <div class="page" id="pageVideo">
+  <div class="page" id="pageVideo" hidden>
     <main class="workspace workspace-single">
       <section class="panel">
         <div class="panel-title">
@@ -251,6 +251,15 @@
     <span class="mask-opt-hint">开启后，画面里的人脸和下方的小头像都会做马赛克处理。只影响显示，原图不动、不上传。</span>
   </div>
 
+  <!-- ============ 匿名统计上报开关（默认开启，可关闭） ============ -->
+  <div class="mask-opt">
+    <label class="mask-opt-label">
+      <input type="checkbox" id="reportToggle" checked>
+      <span>允许上报匿名统计</span>
+    </label>
+    <span class="mask-opt-hint">只上报表情计数、人脸数与耗时，<strong>不含图片</strong>。关掉后一条都不会发。</span>
+  </div>
+
   <!-- ============ 主按钮 ============ -->
   <button type="button" id="detectBtn" class="btn-primary" disabled>开始识别</button>
 
@@ -269,6 +278,7 @@
   <script src="js/config.js"></script>
   <script src="js/models.js"></script>
   <script src="js/render.js"></script>
+  <script src="js/report.js"></script>
   <script src="js/image-select.js"></script>
   <script src="js/recognize.js"></script>
   <script src="js/camera.js"></script>

@@ -112,6 +112,7 @@ let lastInfoCostMs = 0;     // 最近一次识别耗时，切换分组开关后�
 
 let mode         = 'image'; // 当前模式：'image' | 'camera'
 let cameraStream = null;    // 摄像头媒体流
+let cameraAgg    = null;    // 本次摄像头会话的匿名统计累计（停止时上报）
 let cameraTimer  = null;    // 连续检测的定时器
 let cameraBusy   = false;   // 上一帧还没算完时跳过这一帧，避免任务堆积
 let cameraFrames = 0;       // 用于计算帧率
@@ -226,6 +227,7 @@ const trendCsvBtn       = $('trendCsvBtn');
 const trendClearBtn     = $('trendClearBtn');
 const groupToggle       = $('groupToggle');
 const maskToggle        = $('maskToggle');
+const reportToggle      = $('reportToggle');
 const imgBar            = $('imgBar');
 const imgIndex          = $('imgIndex');
 const prevBtn           = $('prevBtn');

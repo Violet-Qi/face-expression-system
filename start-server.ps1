@@ -105,9 +105,11 @@ function Test-PortFree([int]$port) {
 # ---------------- 主流程 ----------------
 Show-Header
 
-$python = Find-Python
-$node   = $null
-if (-not $python) { $node = Find-Node }
+# 优先用 Node.js：管理后台与匿名统计需要 server-app.js（同一个端口同时提供静态页和 /api）。
+# 没有 Node 时退回 Python 纯静态服务 —— 识别功能照常，只是管理台和匿名统计用不了。
+$node   = Find-Node
+$python = $null
+if (-not $node) { $python = Find-Python }
 
 if (-not $python -and -not $node) {
     Write-Host '  [错误] 没有找到可用的 Python 或 Node.js，无法启动本地服务器。' -ForegroundColor Red
@@ -136,12 +138,15 @@ if (-not $port) {
 
 $url = "http://localhost:$port/index.html"
 
-if ($python) {
-    Write-Host "  运行时 : Python  ($python)"
+if ($node) {
+    Write-Host "  运行时 : Node.js  ($node)"
 } else {
-    Write-Host "  运行时 : Node.js ($node)"
+    Write-Host "  运行时 : Python   ($python)"
+    Write-Host "  注意   : 当前只有纯静态服务，管理后台与匿名统计不可用。" -ForegroundColor Yellow
+    Write-Host "           需要管理后台请安装 Node.js（https://nodejs.org）。" -ForegroundColor Yellow
 }
-Write-Host "  地址   : $url" -ForegroundColor Green
+Write-Host "  主页   : $url" -ForegroundColor Green
+if ($node) { Write-Host "  管理台 : http://localhost:$port/admin.html" -ForegroundColor Green }
 Write-Host ''
 Write-Host '  浏览器会自动打开。' -ForegroundColor Gray
 Write-Host '  本窗口请不要关闭 —— 关掉它就等于停止服务。' -ForegroundColor Gray
@@ -157,8 +162,8 @@ Start-Job -ScriptBlock {
 } -ArgumentList $url | Out-Null
 
 # 启动静态服务器（会一直运行，直到窗口关闭或按 Ctrl+C）
-if ($python) {
-    & $python -m http.server $port
+if ($node) {
+    & $node "$PSScriptRoot\server-app.js" $port
 } else {
-    & $node "$PSScriptRoot\server.js" $port
+    & $python -m http.server $port
 }

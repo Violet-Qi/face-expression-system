@@ -45,6 +45,15 @@ async function runDetect() {
     };
     renderBatch();
 
+    // 匿名统计上报（单张识别）。只上报计数，图片不会离开浏览器。
+    {
+      const sum = summarizeResults(out.results);
+      reportSession('image', {
+        faces: sum.faces, top: sum.top, topVal: sum.topVal,
+        costMs: out.costMs, expr: sum.expr
+      });
+    }
+
     if (DEBUG) {
       const brief = out.results.map(r => {
         const t = topExpression(r.expressions);
@@ -236,6 +245,21 @@ async function runBatch() {
   const okCount = batchResults.filter(r => r && r.faces > 0).length;
   batchText.textContent = `批量识别完成：${total} 张，共耗时 ${sec} 秒` +
     (failed ? `，其中 ${failed} 张未检出人脸` : '');
+
+  // 匿名统计上报（整批一次）。按每张图的结果汇总成一条记录。
+  {
+    const sum = { faces: 0, expr: {}, top: null, topVal: null };
+    batchResults.forEach(r => {
+      if (!r) return;
+      sum.faces += r.faces || 0;
+      if (r.top) sum.expr[r.top.name] = (sum.expr[r.top.name] || 0) + (r.faces || 1);
+      if (r.top && r.top.value > (sum.topVal == null ? -1 : sum.topVal)) { sum.top = r.top.name; sum.topVal = r.top.value; }
+    });
+    reportSession('batch', {
+      faces: sum.faces, top: sum.top, topVal: sum.topVal,
+      costMs: Math.round((performance.now() - t0)), expr: sum.expr
+    });
+  }
 
   // 跨照片汇总：把所有照片的人脸特征放一起再聚类一次，得到"哪张照片是谁"
   if (groupEnabled && photosData.length) {

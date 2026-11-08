@@ -145,9 +145,35 @@ function syncOverlayToVideo(canvas, videoEl) {
  * 否则图片被缩小显示时，框会细得看不见。
  * color 不传时用默认的绿色（表情模式）。
  */
+/**
+ * 生成人脸标签。
+ *
+ * 手机上人脸在画面上只有几十像素宽，如果还写"人物1 · Face 1: neutral 97.8%"这种长标签，
+ * 会比人脸本身宽得多，几个标签互相糊在一起、还会溢出画面右边。
+ * 所以窄屏用短格式：把英文表情换成中文、去掉百分比小数。
+ *
+ * @param {number} index    第几张脸（从 0 开始）
+ * @param {{name:string,value:number}} top  主导表情
+ * @param {number} groupIdx 人物分组编号（-1 表示没有分组）
+ */
+function faceLabel(index, top, groupIdx) {
+  const narrow = window.innerWidth < 640;
+  if (narrow) {
+    // 手机上人脸在画面里往往只有几十像素宽，放不下"人物1 · 表情 98%"这种标签，
+    // 几个标签必然叠在一起。这里只保留 2~3 个汉字的情绪名，
+    // "是谁"靠框的颜色 + 下方信息列表区分，不再挤在画面上。
+    return EXPR_CN[top.name] || top.name;
+  }
+  let s = `Face ${index + 1}: ${top.name} ${(top.value * 100).toFixed(1)}%`;
+  if (groupIdx >= 0) s = `人物${groupIdx + 1} · ` + s;
+  return s;
+}
+
 function drawBox(ctx, box, label, scale, color) {
-  const lineW = Math.max(2, 3 * scale);
-  const fontS = Math.max(12, 20 * scale);
+  const narrow = window.innerWidth < 640;
+  const lineW = Math.max(2, (narrow ? 2 : 3) * scale);
+  // 窄屏字号也收小，否则标注比人脸还大
+  const fontS = Math.max(narrow ? 9 : 12, (narrow ? 13 : 20) * scale);
 
   ctx.strokeStyle = color || '#00e000';
   ctx.lineWidth = lineW;
@@ -157,7 +183,12 @@ function drawBox(ctx, box, label, scale, color) {
   ctx.font = `bold ${fontS}px "Segoe UI", Arial, sans-serif`;
   ctx.textBaseline = 'alphabetic';
   const ty = (box.y - 6 * scale) > fontS ? (box.y - 6 * scale) : (box.y + fontS + 4 * scale);
-  ctx.fillText(label, box.x, ty);
+
+  // 文字不能画出画布右边（手机上很容易发生）
+  const tw = ctx.measureText(label).width;
+  const maxX = ctx.canvas.width - tw - 2 * scale;
+  const tx = Math.max(0, Math.min(box.x, maxX));
+  ctx.fillText(label, tx, ty);
 }
 
 /** 图片模式：把检测结果画到叠在图片上的 canvas */
@@ -187,8 +218,7 @@ function drawResults(results, groups) {
     // （标签显示的是表情而不是身份，所以保留不影响脱敏）
     if (maskEnabled) mosaicFaceRect(ctx, resultImg, res.detection.box);
 
-    let label = `Face ${i + 1}: ${top.name} ${(top.value * 100).toFixed(1)}%`;
-    if (g >= 0) label = `人物${g + 1} · ` + label;
+    const label = faceLabel(i, top, g);
     drawBox(ctx, res.detection.box, label, scale, color);
   });
 

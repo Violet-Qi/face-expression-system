@@ -52,6 +52,9 @@ async function startCamera() {
     // 画面元素显示出来、占位提示收起、按钮变成"停止" —— 这些显隐统一交给 renderView
     ui.cameraLive = true;
 
+    // 本次摄像头会话的匿名统计累计（停止时上报一次）
+    cameraAgg = { faces: 0, expr: {}, top: null, topVal: null, startedAt: performance.now() };
+
     cameraFrames = 0;
     cameraFpsAt  = performance.now();
     detectBtn.textContent = '停止摄像头';
@@ -86,6 +89,16 @@ async function stopCamera() {
 
   showInfo('摄像头已关闭。', false);
   renderView();
+
+  // 匿名统计上报（本次摄像头会话）。没累计到东西就不报，避免写空记录。
+  if (cameraAgg && cameraAgg.faces > 0) {
+    reportSession('camera', {
+      faces: cameraAgg.faces, top: cameraAgg.top, topVal: cameraAgg.topVal,
+      durMs: Math.round(performance.now() - cameraAgg.startedAt),
+      expr: cameraAgg.expr
+    });
+  }
+  cameraAgg = null;
 
   // 清空画布，避免残留最后一帧的检测框
   const ctx = cameraOverlay.getContext('2d');
@@ -146,7 +159,7 @@ async function detectCameraFrame() {
     // 开了打码就先盖住人脸，再画框和标签
     if (maskEnabled) mosaicFaceRect(ctx, video, res.detection.box);
 
-    drawBox(ctx, res.detection.box, `Face ${i + 1}: ${top.name} ${(top.value * 100).toFixed(1)}%`, scale);
+    drawBox(ctx, res.detection.box, faceLabel(i, top, -1), scale);
   });
 
   // 帧率统计
@@ -161,7 +174,18 @@ async function detectCameraFrame() {
 
   renderCameraInfo(results);
   // 摄像头模式每秒最多计入一次统计，避免数字虚高
-  if (results.length) addStats(results, 1000);
+  if (results.length) {
+    // addStats 返回 false 表示被限流跳过了 —— 那也不计入本次会话的上报累计，
+    // 保证"上报的数字"和"界面统计的数字"是同一个口径。
+    if (addStats(results, 1000)) {
+      const s = summarizeResults(results);
+      cameraAgg.faces += s.faces;
+      Object.keys(s.expr).forEach(k => { cameraAgg.expr[k] = (cameraAgg.expr[k] || 0) + s.expr[k]; });
+      if (s.topVal != null && s.topVal > (cameraAgg.topVal == null ? -1 : cameraAgg.topVal)) {
+        cameraAgg.top = s.top; cameraAgg.topVal = s.topVal;
+      }
+    }
+  }
 }
 
 /** 摄像头模式：把实时结果写进信息框 */

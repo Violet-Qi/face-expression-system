@@ -352,9 +352,20 @@ body {
   .page.is-animating { transition: none; }
 }
 
-/* 窄屏（手机/平板竖屏）自动变成上下排列 */
+/* 窄屏（手机/平板竖屏）适配 */
 @media (max-width: 760px) {
+  /* 双栏变单栏 */
   .workspace { grid-template-columns: 1fr; }
+
+  /* 上传区/结果区在手机上不需要那么高，300px 会留一大片空白 */
+  .drop-zone, .canvas-wrap { min-height: 220px; }
+
+  /* 人物分组卡片：桌面上每行 2~3 张，手机上收窄到能放两列，
+     否则 3 个人要竖着滚很久 */
+  .person-card { min-width: 140px; }
+
+  /* 标题在手机上会占两行，收一点字号 */
+  .page-header h1 { font-size: 22px; }
 }
 
 /* ---------------- 面板卡片 ---------------- */

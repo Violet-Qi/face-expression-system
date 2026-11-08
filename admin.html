@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理台 · 人脸表情识别系统</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+  <div class="wrap">
+
+    <!-- ============================================================
+         登录页
+         ============================================================ -->
+    <div class="login-box" id="loginBox">
+      <h1>管理台</h1>
+      <p class="sub">基于Web平台的人脸表情识别系统</p>
+
+      <form id="loginForm" autocomplete="off">
+        <div class="field">
+          <label for="loginUser">用户名</label>
+          <input type="text" id="loginUser" value="admin" autocomplete="username" required>
+        </div>
+        <div class="field">
+          <label for="loginPass">密码</label>
+          <input type="password" id="loginPass" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn btn-primary" id="loginBtn">登录</button>
+        <p class="msg" id="loginMsg"></p>
+      </form>
+
+      <p class="foot" style="margin-top:18px;text-align:left">
+        默认账户 <code>admin</code> / <code>admin123</code>，首次登录后请尽快改掉口令。
+      </p>
+    </div>
+
+    <!-- ============================================================
+         管理面板（登录后才显示）
+         ============================================================ -->
+    <div id="adminBox" hidden>
+
+      <div class="topbar">
+        <h1>管理台 <small>人脸表情识别系统 · 匿名统计</small></h1>
+        <span id="whoami" style="font-size:12.5px;color:var(--text-muted)"></span>
+        <button type="button" class="btn" id="pwdBtn">改密码</button>
+        <button type="button" class="btn" id="logoutBtn">退出</button>
+      </div>
+
+      <!-- 概览指标 -->
+      <div class="cards">
+        <div class="card"><div class="k">会话数（近 7 天）</div><div class="v" id="kpiSessions">0</div></div>
+        <div class="card"><div class="k">检出人脸（近 7 天）</div><div class="v" id="kpiFaces">0</div></div>
+        <div class="card"><div class="k">平均处理耗时</div><div class="v" id="kpiCost">—<span class="u">ms</span></div></div>
+        <div class="card"><div class="k">最常出现的表情</div><div class="v" id="kpiTop" style="font-size:20px">—</div></div>
+        <div class="card"><div class="k">累计（全部时间）</div><div class="v" id="kpiAll" style="font-size:20px">—</div></div>
+      </div>
+
+      <div class="panel">
+        <h2>表情分布 <span class="hint">近 7 天，按人次统计</span></h2>
+        <div class="bars" id="exprBars"><div class="empty">暂无数据</div></div>
+      </div>
+
+      <div class="panel">
+        <h2>使用趋势 <span class="hint">按天，柱高为会话数</span></h2>
+        <canvas id="dayChart"></canvas>
+      </div>
+
+      <div class="panel">
+        <h2>按识别模式 <span class="hint">四种模式各自的使用量</span></h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>模式</th><th>会话数</th><th>人脸数</th></tr></thead>
+            <tbody id="kindBody"><tr><td colspan="3" class="empty">暂无数据</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>
+          会话明细
+          <span class="hint" id="listHint"></span>
+        </h2>
+        <div class="panel-tools">
+          <select id="kindFilter" class="btn" style="padding:7px 10px">
+            <option value="">全部模式</option>
+            <option value="image">图片识别</option>
+            <option value="batch">批量识别</option>
+            <option value="camera">摄像头实时</option>
+            <option value="video">视频文件</option>
+          </select>
+          <button type="button" class="btn" id="refreshBtn">刷新</button>
+          <button type="button" class="btn" id="exportBtn">导出 CSV</button>
+          <button type="button" class="btn btn-danger" id="clearBtn">清空全部数据</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>时间</th><th>模式</th><th>人脸数</th>
+                <th>主导表情</th><th>置信度</th><th>耗时</th><th>表情明细</th>
+              </tr>
+            </thead>
+            <tbody id="listBody"><tr><td colspan="8" class="empty">暂无数据</td></tr></tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <button type="button" class="btn" id="prevBtn">上一页</button>
+          <span id="pageInfo">第 1 / 1 页</span>
+          <button type="button" class="btn" id="nextBtn">下一页</button>
+        </div>
+      </div>
+
+      <p class="msg" id="adminMsg"></p>
+
+      <p class="foot">
+        本管理台只统计<strong>匿名的计数数据</strong>：模式、人脸数、各表情出现次数、耗时、时间。<br>
+        不含任何图片、视频、人脸框、人脸特征或缩略图；前端可随时关闭上报。
+      </p>
+    </div>
+
+  </div>
+
+  <script src="js/admin.js"></script>
+</body>
+</html>
