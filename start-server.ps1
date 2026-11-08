@@ -147,6 +147,32 @@ if ($node) {
 }
 Write-Host "  主页   : $url" -ForegroundColor Green
 if ($node) { Write-Host "  管理台 : http://localhost:$port/admin.html" -ForegroundColor Green }
+
+# 列出局域网地址：手机连同一个热点/路由器时用这个（不是 localhost）
+$lanIps = @()
+try {
+    $lanIps = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction Stop |
+        Where-Object { $_.IPAddress -ne '127.0.0.1' -and $_.AddressState -ne 'Tentative' -and $_.IPAddress -notlike '169.254.*' } |
+        Select-Object -ExpandProperty IPAddress -Unique
+} catch {
+    # 老系统上没有 Get-NetIPAddress，退回 WMI
+    try {
+        $lanIps = Get-WmiObject Win32_NetworkAdapterConfiguration -ErrorAction Stop |
+            Where-Object { $_.IPEnabled -and $_.IPAddress } |
+            ForEach-Object { $_.IPAddress | Where-Object { $_ -match '^\d+\.\d+\.\d+\.\d+$' } } |
+            Where-Object { $_ -ne '127.0.0.1' -and $_ -notlike '169.254.*' } | Select-Object -Unique
+    } catch { }
+}
+if ($lanIps) {
+    Write-Host ""
+    Write-Host "  手机访问（连同一个热点 / 路由器时用）：" -ForegroundColor Cyan
+    foreach ($ip in $lanIps) {
+        Write-Host "    http://${ip}:$port/index.html" -ForegroundColor Cyan
+    }
+    Write-Host "    注意：手机浏览器在普通 HTTP 下不允许用摄像头；" -ForegroundColor DarkGray
+    Write-Host "          图片识别、视频文件识别、管理台都正常。" -ForegroundColor DarkGray
+    Write-Host "    若手机打不开：检查 Windows 防火墙是否放行了本程序的网络访问。" -ForegroundColor DarkGray
+}
 Write-Host ''
 Write-Host '  浏览器会自动打开。' -ForegroundColor Gray
 Write-Host '  本窗口请不要关闭 —— 关掉它就等于停止服务。' -ForegroundColor Gray

@@ -30,6 +30,7 @@ const http   = require('http');
 const fs     = require('fs');
 const path   = require('path');
 const crypto = require('crypto');
+const os     = require('node:os');
 const { DatabaseSync } = require('node:sqlite');
 
 /* ---------------- 基本配置 ---------------- */
@@ -543,6 +544,27 @@ if (process.argv.includes('--stats')) {
   process.exit(0);
 }
 
+/**
+ * 列出本机的局域网 IPv4 地址。
+ * 用途：手机连同一个热点/路由器时，用 http://这些地址:端口 就能访问。
+ * 注意：普通 HTTP 下手机浏览器不允许用摄像头（不是 localhost 就不算安全来源），
+ *       但图片、视频文件、管理台等功能都正常。
+ */
+function lanAddresses() {
+  const out = [];
+  const ifs = os.networkInterfaces();
+  Object.keys(ifs).forEach(name => {
+    (ifs[name] || []).forEach(ni => {
+      // 排除内部回环和 169.254.x.x（APIPA/link-local）：
+      // 后者是网卡没拿到 DHCP 时的自动地址，手机用它连不上，列出来只会误导。
+      if (ni.family === 'IPv4' && !ni.internal && !/^169\\.254\\./.test(ni.address)) {
+        out.push({ name, address: ni.address });
+      }
+    });
+  });
+  return out;
+}
+
 server.listen(PORT, () => {
   console.log('');
   console.log('  ============================================================');
@@ -553,11 +575,30 @@ server.listen(PORT, () => {
   console.log('  App       : http://localhost:' + PORT + '/index.html');
   console.log('  Admin     : http://localhost:' + PORT + '/admin.html');
   console.log('  API       : http://localhost:' + PORT + '/api/health');
+
+  const lans = lanAddresses();
+  if (lans.length) {
+    console.log('');
+    console.log('  LAN access (same WiFi / hotspot):');
+    lans.forEach(l => {
+      console.log('    http://' + l.address + ':' + PORT + '/index.html    [' + l.name + ']');
+    });
+    console.log('    note: over plain HTTP, mobile browsers will NOT allow the camera.');
+    console.log('          Image / video / admin features work fine.');
+  }
   console.log('');
-  console.log('  Default admin account:');
+  // 判断管理员密码是否仍是默认值（对比哈希），公网/局域网部署前必须改掉
+  const stillDefault = safeEqualHex(
+    hashPassword(DEFAULT_ADMIN_PASS, adminAccount.salt).hash,
+    adminAccount.hash
+  );
+  console.log('  Admin account:');
   console.log('    user = ' + adminAccount.user);
-  console.log('    pass = ' + (process.argv.includes('--reset-admin') ? DEFAULT_ADMIN_PASS : '(unchanged)'));
-  console.log('  Change it in the admin panel after first login.');
+  if (stillDefault) {
+    console.log('    pass = ' + DEFAULT_ADMIN_PASS + '   <-- still the DEFAULT password, change it!');
+  } else {
+    console.log('    pass = (you have already changed it)');
+  }
   console.log('');
   console.log('  Database  : ' + DB_FILE);
   console.log('  Privacy   : only anonymous counts are stored (no images, no face data).');
