@@ -46,6 +46,7 @@ const DEFAULT_ADMIN_USER = 'admin';
 const DEFAULT_ADMIN_PASS = 'admin123';   // 首次启动写入；请在管理台里改掉
 const SESSION_TTL_MS = 8 * 60 * 60 * 1000;   // 登录有效期 8 小时
 const MAX_BODY = 64 * 1024;                  // 上报/登录体上限 64KB
+ /* 实时请求日志：默认开启，控制台能看到"谁在什么时候访问了什么"。    加 --quiet 参数可关掉（适合后台服务运行）。    注意：日志里只打 URL 路径，不打内容 —— 不会泄露任何分析数据。 */ const LOG_REQUESTS = !process.argv.includes('--quiet');
 
 /* ---------------- 工具 ---------------- */
 function ensureDir(d) {
@@ -196,6 +197,68 @@ function noteLoginFail(ip) {
 }
 
 /* ---------------- HTTP 小工具 ---------------- */
+/** 两位补零 */
+const p2 = n => String(n).padStart(2, '0');
+
+/** 当前时间 HH:MM:SS */
+function stamp() {
+  const d = new Date();
+  return p2(d.getHours()) + ':' + p2(d.getMinutes()) + ':' + p2(d.getSeconds());
+}
+
+/** 右补空格，让每列对齐 */
+function padR(s, n) {
+  s = String(s);
+  return s.length >= n ? s : s + ' '.repeat(n - s.length);
+}
+
+/** 把 ::ffff:192.168.1.5 简化成 192.168.1.5；本机显示为 local */
+function shortIp(ip) {
+  if (!ip) return '-';
+  const s = String(ip).replace(/^::ffff:/, '');
+  if (s === '::1' || s === '127.0.0.1') return 'local';
+  return s;
+}
+
+/** 给每行日志加一个中文类别，扫一眼就知道这条请求在干什么 */
+function pathTag(pathname, status) {
+  if (status === 404) return '[未找到]';
+  // 这几类是后端主动拦截的（数据库、源码、包配置），单独标出来更醒目
+  if (pathname.startsWith('/data/') || /\/(server-app\.js|server\.js|package\.json|package-lock\.json)$/.test(pathname)) {
+    return '[已拦截]';
+  }
+  if (status === 401 || status === 403) return '[未授权]';
+  if (status >= 500) return '[服务器错误]';
+  if (pathname === '/api/report') return '[统计上报]';
+  if (pathname === '/api/login') return '[登录]';
+  if (pathname === '/api/logout') return '[退出]';
+  if (pathname === '/api/export.csv') return '[导出CSV]';
+  if (pathname.startsWith('/api/')) return '[接口]';
+  if (pathname.startsWith('/models/')) return '[模型]';
+  if (pathname.startsWith('/lib/')) return '[引擎]';
+  if (pathname.endsWith('.html')) return '[页面]';
+  if (/\.(js|css)$/.test(pathname)) return '[脚本样式]';
+  if (/\.(png|jpe?g|webp|gif)$/i.test(pathname)) return '[图片]';
+  if (/\/(data|server-app\.js|server\.js|package)/.test(pathname)) return '[已拦截]';
+  return '[静态]';
+}
+/** 一行日志：时间  来源 方法 路径  状态  耗时  [附加] */
+function logLine(req, res, pathname, ms, extra) {
+  const status = res.statusCode;
+  const flag = (status >= 400) ? '  <-- ' + (status >= 500 ? 'SERVER ERROR' : 'client error') : '';
+  const tail = extra ? '  ' + extra : '';
+  // 路径太长会顶掉后面的列，超过 32 字符就截断
+  let shownPath = pathname;
+  // 用 ASCII 的 ... 而不是 Unicode 省略号：Windows 控制台是 GBK，Unicode 会变乱码
+  if (shownPath.length > 32) shownPath = shownPath.slice(0, 29) + '...';
+  const line = '[' + stamp() + '] ' + padR(shortIp(clientIp(req)), 16)
+    + padR(req.method, 6) + padR(shownPath, 34)
+    + padR(status, 4) + padR(Math.round(ms) + 'ms', 7)
+    + '  ' + padR(pathTag(pathname, status), 12) + tail + flag;
+
+  // 去掉行尾多余空格（类别列是补齐对齐的，没有附加信息时会留白）
+  console.log(line.replace(/\s+$/, ''));
+}
 function sendJSON(res, code, obj) {
   const body = JSON.stringify(obj);
   res.writeHead(code, {
@@ -273,6 +336,9 @@ async function apiReport(req, res) {
   const insItem = db.prepare('INSERT INTO expr_items (session_id, name, count) VALUES (?, ?, ?)');
   Object.keys(expr).forEach(k => insItem.run(sid, k, expr[k]));
 
+  // 让请求日志多显示一点：哪一类、几张脸（不含任何图像内容）
+  const KIND_CN = { image: '图片', batch: '批量', camera: '摄像头', video: '视频' };
+  res.__logExtra = (KIND_CN[kind] || kind) + ' ' + faces + ' 张脸';
   return sendJSON(res, 200, { ok: true, id: sid });
 }
 
@@ -476,6 +542,14 @@ function serveStatic(req, res, urlPath) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://' + (req.headers.host || 'localhost'));
   const p = url.pathname;
+  // 请求日志：响应结束时打印一行（来源 IP、状态码、耗时）
+  if (LOG_REQUESTS) {
+    const t0 = process.hrtime.bigint();
+    res.on('finish', () => {
+      const ms = Number(process.hrtime.bigint() - t0) / 1e6;
+      logLine(req, res, p, ms, res.__logExtra);
+    });
+  }
 
   try {
     if (p.startsWith('/api/')) {
@@ -602,6 +676,9 @@ server.listen(PORT, () => {
   console.log('');
   console.log('  Database  : ' + DB_FILE);
   console.log('  Privacy   : only anonymous counts are stored (no images, no face data).');
+  console.log('  Request log: ON  (add --quiet to disable)');
+  console.log('  日志格式: [时间] 来源IP  方法  路径  状态码  耗时  类别');
+  console.log('  例: [19:23:05] 192.168.1.5  GET  /index.html  200  3ms  [页面]');
   console.log('');
   console.log('  Keep this window open. Closing it stops the server.');
   console.log('');
