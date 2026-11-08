@@ -31,8 +31,14 @@ html, body {
   padding: 0;
 }
 
-body {
+/* 页面底色放在 html 上：功能页的装饰层用 z-index:-1 垫在内容下面，
+   如果 body 自己有不透明背景，就会把装饰层整个盖住。见文件末尾「六、功能页背景装饰」。 */
+html {
   background: var(--bg);
+}
+
+body {
+  background: transparent;
   color: var(--text);
   font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", "Segoe UI", Arial, sans-serif;
   font-size: 14px;
@@ -57,6 +63,17 @@ body {
   margin: 0;
   color: var(--text-muted);
   font-size: 13px;
+}
+
+/* 颜文字装饰：挂在静态标题后面，颜色更淡、字号略小，不抢主体文字 */
+.kao {
+  margin-left: 6px;
+  font-size: .92em;
+  font-weight: 400;
+  color: var(--text-muted);
+  opacity: .85;
+  letter-spacing: 0;
+  white-space: nowrap;
 }
 
 /* ---------------- 状态条 ---------------- */
@@ -317,6 +334,9 @@ body {
 }
 
 /* ---------------- 双栏工作区 ---------------- */
+/* 横向裁切：面板从屏幕外飞入时，别把文档撑宽出横向滚动条。
+   用 clip 而不是 hidden —— clip 不创建滚动容器，不影响别处的 sticky。 */
+.workspace { overflow-x: clip; }
 .workspace {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -353,6 +373,33 @@ body {
   .page.is-animating { transition: none; }
 }
 
+/* ============================================================
+   三页等高（2026-11-08）
+   ------------------------------------------------------------
+   问题：三个页面高度不一致 —— 图片页 460 / 摄像头页 368 / 视频页 431。
+   摄像头页只有一块画面，比另外两页矮 92px，切换时下方的共用区会整体跳。
+
+   做法：给 .page 一个最小高度，并让单栏页（摄像头/视频）的画面区
+   把多出来的高度吃掉 —— 既等高，画面也变大，不是留一块空白。
+   ============================================================ */
+@media (min-width: 761px) {
+  .page {
+    /* 实测：图片页内容 476 高（三页里最高），另两页 460。
+       取 476 让三页严格等高，切换时下方共用区完全不动。 */
+    min-height: 476px;
+    display: flex;
+    flex-direction: column;
+  }
+  .page > .workspace {
+    flex: 1;
+    min-height: 0;
+  }
+  /* 只有单栏的摄像头页 / 视频页：画面区撑满，别留白 */
+  .workspace-single .canvas-wrap {
+    flex: 1 1 auto;
+    min-height: 300px;
+  }
+}
 /* 窄屏（手机/平板竖屏）适配 */
 @media (max-width: 760px) {
   /* 双栏变单栏 */
@@ -502,8 +549,9 @@ body {
   justify-content: center;
   overflow: hidden;
   background: #fcfcfd;
+  /* 图片比框大时，框按图片比例变形（见 js/render.js 的 morphImageWrap） */
+  transition: height 340ms var(--ease-out);
 }
-
 /* canvas 叠在图片/视频上方；位置与尺寸由 JS 按媒体元素的实际显示区域设定 */
 .canvas-wrap canvas {
   position: absolute;
@@ -996,10 +1044,10 @@ body {
 }
 
 /* ---------------- 关键帧 ---------------- */
-@keyframes fxInLeft  { from { opacity:0; transform: translateX(-76px) scale(.96); } to { opacity:1; transform: none; } }
-@keyframes fxInRight { from { opacity:0; transform: translateX(76px)  scale(.96); } to { opacity:1; transform: none; } }
-@keyframes fxInUp    { from { opacity:0; transform: translateY(52px)  scale(.97); } to { opacity:1; transform: none; } }
-@keyframes fxInDown  { from { opacity:0; transform: translateY(-40px) scale(.97); } to { opacity:1; transform: none; } }
+@keyframes fxInLeft  { from { opacity:0; transform: translateX(-100%) scale(.96); } to { opacity:1; transform: none; } }
+@keyframes fxInRight { from { opacity:0; transform: translateX(100%)  scale(.96); } to { opacity:1; transform: none; } }
+@keyframes fxInUp    { from { opacity:0; transform: translateY(90px)  scale(.97); } to { opacity:1; transform: none; } }
+@keyframes fxInDown  { from { opacity:0; transform: translateY(-56px) scale(.97); } to { opacity:1; transform: none; } }
 @keyframes fxPop     { from { opacity:0; transform: scale(.88); }                 to { opacity:1; transform: none; } }
 @keyframes fxFadeIn  { from { opacity:0; }                                        to { opacity:1; } }
 
@@ -1050,6 +1098,14 @@ body.fx-anim .person-card:nth-child(4) { animation-delay: 270ms; }
 body.fx-anim .person-card:nth-child(5) { animation-delay: 340ms; }
 
 /* 画面/画布淡入（不加位移，避免影响尺寸测量） */
+/* 标题区也入场，别让它"一动不动"显得生硬 */
+body.fx-anim .page-header h1 {
+  animation: fxInDown var(--dur) var(--ease-back) both;
+}
+body.fx-anim .page-header .subtitle {
+  animation: fxInDown var(--dur) var(--ease-out) both;
+  animation-delay: 90ms;
+}
 body.fx-anim #sourceImg,
 body.fx-anim #resultImg,
 body.fx-anim #overlay,
@@ -1213,19 +1269,68 @@ tbody tr { transition: background-color var(--dur-fast) var(--ease-out); }
     calc(28px + env(safe-area-inset-right, 0px))
     calc(28px + env(safe-area-inset-bottom, 0px))
     calc(28px + env(safe-area-inset-left, 0px));
-  background:
-    radial-gradient(1100px 520px at 50% -12%, #ffe9d6 0%, rgba(255, 233, 214, 0) 62%),
-    linear-gradient(158deg, #fffaf5 0%, #f4f6f8 46%, #eef3f8 100%);
+  /* 微软 Fluent 那种蓝：深蓝打底 + 几层蓝色光斑 */
+  background-color: #08306b;
+  background-image:
+    radial-gradient(1200px 820px at 12% 6%,  #1b6ec2 0%, rgba(27, 110, 194, 0)  58%),
+    radial-gradient(1000px 760px at 88% 14%, #0078d4 0%, rgba(0, 120, 212, 0)  60%),
+    radial-gradient(860px  700px at 72% 96%, #00bcf2 0%, rgba(0, 188, 242, 0)  62%),
+    linear-gradient(140deg, #062a5e 0%, #0a4a8f 48%, #0a63b0 100%);
   animation: fxFadeIn 380ms var(--ease-out) both;
 }
 
+/* 几何色块：两块大斜面，模仿 Windows 11 的 Bloom 背景 */
+.cover::before,
+.cover::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  will-change: transform;
+}
+.cover::before {
+  width: 46vmax;
+  height: 46vmax;
+  left: -13vmax;
+  top: -15vmax;
+  border-radius: 26%;
+  transform: rotate(-18deg);
+  background: linear-gradient(135deg, rgba(0, 188, 242, .55) 0%, rgba(0, 120, 212, .10) 70%);
+}
+.cover::after {
+  width: 40vmax;
+  height: 40vmax;
+  right: -12vmax;
+  bottom: -14vmax;
+  border-radius: 32%;
+  transform: rotate(22deg);
+  background: linear-gradient(135deg, rgba(80, 230, 255, .48) 0%, rgba(43, 136, 216, .10) 72%);
+}
+
 .cover-inner {
+  position: relative;      /* 让内部的几何块定位，并让内容压在它上面 */
+  z-index: 1;
   width: 100%;
   /* min-width:0 很关键：flex 子项默认 min-width:auto，会被内容的最小宽度
      顶住不让收缩；emoji 字体还没加载完时回退字形更宽，就会把整页撑出横向滚动条 */
   min-width: 0;
   max-width: 560px;
   text-align: center;
+
+  /* 毛玻璃：半透明白 + 背景模糊 + 细白边 + 柔和投影 */
+  padding: 40px 34px 32px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, .58);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, .65);
+  box-shadow:
+    0 24px 60px rgba(3, 24, 56, .35),
+    inset 0 1px 0 rgba(255, 255, 255, .75);
+}
+
+/* 不支持 backdrop-filter 时兜底：白底更实一点，保证文字可读 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .cover-inner { background: rgba(255, 255, 255, .92); }
 }
 
 .cover-title {
@@ -1313,6 +1418,14 @@ tbody tr { transition: background-color var(--dur-fast) var(--ease-out); }
   color: #98a2ae;
 }
 
+/* 封面打开期间锁住页面滚动：否则背后的页面会比封面高，
+   右侧会露出一条滚动条，滚动时封面不动、背后内容却在动，很怪。
+   用类而不是 :has()，兼容性更稳。 */
+html.cover-open,
+body.cover-open {
+  overflow: hidden;
+}
+
 /* 离场：整块上移淡出 */
 .cover.is-leaving {
   animation: coverUp 420ms var(--ease-in) both;
@@ -1340,4 +1453,96 @@ tbody tr { transition: background-color var(--dur-fast) var(--ease-out); }
   .cover-chips { margin-bottom: 14px; }
   .cover-hint  { display: none; }
   .cover-start { padding: 11px 36px; font-size: 14px; }
+}
+
+/* ============================================================
+   六、功能页背景装饰（2026-11-08）
+   ------------------------------------------------------------
+   左右两侧各撒几块"毛玻璃片"，颜色很淡，只为让页面不那么空。
+
+   两个要点：
+   1. **毛玻璃必须有东西可模糊**。纯色背景上用 backdrop-filter 等于白做，
+      所以先铺几块淡蓝几何色（.fx-shape），再把玻璃片（.fx-blob）压在上面。
+   2. **z-index:-1**：垫在所有内容之下、html 背景之上。为此把页面底色
+      从 body 移到了 html（body 改为透明），否则不透明的 body 背景会把
+      整个装饰层盖掉。
+   装饰层是 fixed + overflow:hidden，不会产生滚动条，也不接收点击。
+   ============================================================ */
+
+.page-fx {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 淡蓝几何底：给毛玻璃提供"可模糊的东西" */
+.fx-shape {
+  position: absolute;
+  display: block;
+  border-radius: 42%;
+  filter: blur(2px);
+}
+.fx-shape.s1 {
+  width: 34vmax; height: 34vmax;
+  left: -12vmax; top: -6vmax;
+  transform: rotate(-16deg);
+  background: linear-gradient(135deg, rgba(0, 120, 212, .16) 0%, rgba(0, 188, 242, .04) 70%);
+}
+.fx-shape.s2 {
+  width: 26vmax; height: 26vmax;
+  right: -10vmax; top: 26%;
+  transform: rotate(20deg);
+  background: linear-gradient(135deg, rgba(80, 230, 255, .16) 0%, rgba(0, 120, 212, .04) 72%);
+}
+.fx-shape.s3 {
+  width: 30vmax; height: 22vmax;
+  left: -10vmax; bottom: -6vmax;
+  transform: rotate(12deg);
+  background: linear-gradient(135deg, rgba(0, 90, 158, .12) 0%, rgba(0, 188, 242, .03) 70%);
+}
+
+/* 毛玻璃片：小、淡、分散在左右两侧 */
+.fx-blob {
+  position: absolute;
+  display: block;
+  background: rgba(255, 255, 255, .34);
+  -webkit-backdrop-filter: blur(16px) saturate(130%);
+  backdrop-filter: blur(16px) saturate(130%);
+  border: 1px solid rgba(255, 255, 255, .62);
+  box-shadow: 0 16px 36px rgba(16, 42, 80, .06);
+}
+.fx-blob.b1 {
+  width: 190px; height: 190px;
+  left: -54px; top: 16%;
+  border-radius: 34%;
+  transform: rotate(-14deg);
+}
+.fx-blob.b2 {
+  width: 132px; height: 132px;
+  right: -34px; top: 34%;
+  border-radius: 50%;
+}
+.fx-blob.b3 {
+  width: 210px; height: 150px;
+  left: -70px; bottom: 18%;
+  border-radius: 30%;
+  transform: rotate(9deg);
+}
+.fx-blob.b4 {
+  width: 116px; height: 116px;
+  right: -22px; bottom: 12%;
+  border-radius: 38%;
+  transform: rotate(-24deg);
+}
+
+/* 窄屏没有"两侧"，直接隐藏，省点模糊开销 */
+@media (max-width: 900px) {
+  .page-fx { display: none; }
+}
+
+/* 系统关掉动态效果时也不需要这些装饰（省 GPU） */
+@media (prefers-reduced-motion: reduce) {
+  .page-fx { display: none; }
 }

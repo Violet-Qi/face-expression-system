@@ -108,6 +108,13 @@ function clearImages() {
 
   sourceImg.removeAttribute('src');
 
+  // 结果框的尺寸是跟着图片比例变的（见 render.js 的 morphImageWrap），
+  // 清空图片后要还原，否则下次打开还是一副被压扁的框
+  if (overlay && overlay.parentElement) {
+    overlay.parentElement.style.height = '';
+    overlay.parentElement.style.minHeight = '';
+  }
+
   ui.resultShown = false;
   resultPlaceholder.innerHTML = '<p>识别结果会显示在这里</p>';
 

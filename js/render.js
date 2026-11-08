@@ -191,11 +191,60 @@ function drawBox(ctx, box, label, scale, color) {
   ctx.fillText(label, tx, ty);
 }
 
+/* ============================================================
+   图片页：让「识别结果」的框跟着图片比例变形
+   ------------------------------------------------------------
+   框原来固定 300 高：宽图被上下留白、长图被左右留白。
+   这里按图片宽高比算目标高度并加过渡动画，让框"变形"贴住图片。
+
+   上限 412 是算出来的：页面最小高度 476 − 面板标题 40 − 内边距 24。
+   超过它页面会被撑高，下方共用区就会跳。
+   ============================================================ */
+let morphTimer = null;
+
+function morphImageWrap() {
+  const wrap = overlay && overlay.parentElement;
+  if (!wrap || !resultImg || !resultImg.naturalWidth || !resultImg.naturalHeight) return;
+
+  const wrapW = wrap.clientWidth;
+  if (!wrapW) return;
+
+  const aspect = resultImg.naturalWidth / resultImg.naturalHeight;   // 宽 / 高
+  const target = Math.max(180, Math.min(412, Math.round(wrapW / aspect)));
+
+  // 允许缩到 180，得用内联值盖掉 CSS 里的 min-height:300
+  wrap.style.minHeight = '180px';
+
+  if (Math.abs(wrap.getBoundingClientRect().height - target) < 2) return;
+
+  wrap.style.height = target + 'px';
+
+  // 过渡结束后再对齐一次：动画期间读到的矩形是中间态，
+  // 不重绘的话检测框会和图片错开。
+  if (morphTimer) clearTimeout(morphTimer);
+  wrap.addEventListener('transitionend', onWrapMorphed, { once: true });
+  morphTimer = setTimeout(onWrapMorphed, 420);      // 兜底：过渡没触发也要对齐
+}
+
+/** 框变形结束后重绘一次，保证框和图片严丝合缝 */
+function onWrapMorphed() {
+  if (morphTimer) { clearTimeout(morphTimer); morphTimer = null; }
+  if (lastResults && lastResults.length) {
+    drawResults(lastResults, lastGroups);
+  } else if (typeof renderPreviewMask === 'function') {
+    renderPreviewMask();
+  }
+}
+
 /** 图片模式：把检测结果画到叠在图片上的 canvas */
 function drawResults(results, groups) {
   // canvas 分辨率 = 图片原始像素；再把它对准图片在页面上的实际位置
   overlay.width  = resultImg.naturalWidth;
   overlay.height = resultImg.naturalHeight;
+
+  // 先让"框"跟着图片比例变形（带过渡动画），再对齐叠加层。
+  // 顺序很重要：框一变，图片在页面上的实际位置也跟着变，必须先改框。
+  morphImageWrap();
 
   const wrapRect = overlay.parentElement.getBoundingClientRect();
   const imgRect  = resultImg.getBoundingClientRect();

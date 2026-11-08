@@ -571,6 +571,13 @@ window.addEventListener('DOMContentLoaded', initModels);
 
 let coverEntered = false;
 
+/** 封面期间锁住页面滚动（见 css 的 body.cover-open） */
+function setCoverScrollLock(on) {
+  // 滚动条是 html 的，只锁 body 不管用
+  if (document.documentElement) document.documentElement.classList.toggle('cover-open', !!on);
+  if (document.body) document.body.classList.toggle('cover-open', !!on);
+}
+
 /** 是否跳过封面（测试 / 调试用） */
 function coverSuppressed() {
   const q = new URLSearchParams(location.search);
@@ -595,6 +602,7 @@ function enterApp() {
     // 420ms 动画放完再彻底移除，避免它继续挡住点击
     setTimeout(() => cover.classList.add('is-gone'), 430);
   }
+  setCoverScrollLock(false);           // 解开滚动锁
   // 入场动画在这一刻才播
   replayBootFx();
 }
@@ -608,6 +616,7 @@ function onModelsReady() {
 }
 
 if (cover && !coverSuppressed()) {
+  setCoverScrollLock(true);
   coverStart.addEventListener('click', enterApp);
 
   // 键盘也能进：回车 / 空格

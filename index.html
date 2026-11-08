@@ -8,7 +8,20 @@
 </head>
 <body class="fx-anim">
 
-  <!-- ============ 封面 ============
+  <!-- ============ 背景装饰（纯装饰，不接收点击）============
+       左右两侧各两块：淡蓝几何底 + 上面盖一层毛玻璃片。
+       毛玻璃必须有东西可模糊，所以先铺几何色，再压玻璃。 -->
+  <div class="page-fx" aria-hidden="true">
+    <span class="fx-shape s1"></span>
+    <span class="fx-shape s2"></span>
+    <span class="fx-shape s3"></span>
+    <span class="fx-blob b1"></span>
+    <span class="fx-blob b2"></span>
+    <span class="fx-blob b3"></span>
+    <span class="fx-blob b4"></span>
+  </div>
+
+  <!-- ============ 封面 ============'
        默认显示；点「开始体验」后才进入功能页，入场动画在那一刻才播。
        模型在这层后面照常加载，加载完按钮才可点 —— 顺便把等待时间藏起来。
        带 ?debug=1 或 ?cover=0 时由 js/main.js 直接跳过（测试用）。 -->
@@ -27,7 +40,7 @@
 
       <p class="cover-status" id="coverStatus">正在加载模型，请稍候…</p>
       <button type="button" class="cover-start" id="coverStart" disabled>加载中…</button>
-      <p class="cover-hint">图片和视频不会上传，全部在你的浏览器里完成</p>
+      <p class="cover-hint">图片和视频不会上传，全部在你的浏览器里完成 <span class="kao">(๑˃̵ᴗ˂̵)</span></p>
     </div>
   </div>
 
@@ -65,7 +78,7 @@
       <!-- 左栏：上传图片 -->
       <section class="panel" id="leftPanel">
         <div class="panel-title">
-          <span class="panel-icon">🖼</span> <span>上传图片</span>
+          <span class="panel-icon">🖼</span> <span>上传图片</span><span class="kao">(＾▽＾)</span>
         </div>
         <div class="panel-body">
           <div id="dropZone" class="drop-zone">
@@ -119,12 +132,12 @@
       <!-- 右栏：识别结果 -->
       <section class="panel">
         <div class="panel-title">
-          <span class="panel-icon">🔍</span> <span>识别结果</span>
+          <span class="panel-icon">🔍</span> <span>识别结果</span><span class="kao">(・ω・)ノ</span>
         </div>
         <div class="panel-body">
           <div class="canvas-wrap" id="imageCanvasWrap">
             <div class="canvas-placeholder" id="resultPlaceholder">
-              <p>识别结果会显示在这里</p>
+              <p>识别结果会显示在这里 <span class="kao">(´･ω･`)</span></p>
             </div>
             <img id="resultImg" class="preview-img" alt="识别结果">
             <canvas id="overlay"></canvas>
@@ -163,12 +176,12 @@
     <main class="workspace workspace-single" id="workspaceCamera">
       <section class="panel">
         <div class="panel-title">
-          <span class="panel-icon">🔍</span> <span>摄像头实时画面</span>
+          <span class="panel-icon">🔍</span> <span>摄像头实时画面</span><span class="kao">(￣▽￣)</span>
         </div>
         <div class="panel-body">
           <div class="canvas-wrap" id="cameraCanvasWrap">
             <div class="canvas-placeholder" id="cameraPlaceholder">
-              <p>开启摄像头后，这里显示带标注的实时画面</p>
+              <p>开启摄像头后，这里显示带标注的实时画面 <span class="kao">(￣▽￣)ノ</span></p>
               <p class="drop-hint">点击下方「开启摄像头」按钮，浏览器会询问是否允许访问</p>
             </div>
             <video id="video" autoplay playsinline muted></video>
@@ -189,7 +202,7 @@
     <main class="workspace workspace-single">
       <section class="panel">
         <div class="panel-title">
-          <span class="panel-icon">🎬</span> <span>视频文件逐帧分析</span>
+          <span class="panel-icon">🎬</span> <span>视频文件逐帧分析</span><span class="kao">(・∀・)</span>
         </div>
         <div class="panel-body">
 
@@ -208,7 +221,7 @@
           <!-- 画面 + 检测框 -->
           <div class="canvas-wrap" id="videoCanvasWrap">
             <div class="canvas-placeholder" id="videoPlaceholder">
-              <p>选择一段本地短视频，这里会逐帧显示检测结果</p>
+              <p>选择一段本地短视频，这里会逐帧显示检测结果 <span class="kao">(・∀・)</span></p>
               <p class="drop-hint">视频不会上传，全部在你的浏览器里分析</p>
             </div>
             <video id="videoFile" playsinline muted hidden></video>
@@ -235,7 +248,7 @@
 
   <!-- ============ 累计统计 ============ -->
   <section class="stats-box" id="statsBox">
-    <div class="info-title">本次会话表情统计（累计 <span id="statsTotal">0</span> 张人脸）</div>
+    <div class="info-title">本次会话表情统计 <span class="kao">(・ω・)</span>（累计 <span id="statsTotal">0</span> 张人脸）</div>
     <div id="statsContent" class="stats-content"></div>
   </section>
 
