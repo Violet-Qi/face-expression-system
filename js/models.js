@@ -55,6 +55,8 @@ async function initModels() {
     modelsReady = true;
     const sec = ((performance.now() - t0) / 1000).toFixed(1);
     setStatus(`模型加载完成（耗时 ${sec} 秒），请选择图片或开启摄像头。`, 'ok');
+    // 通知封面解封「开始体验」按钮（函数在 main.js 里，保持分层）
+    if (typeof onModelsReady === 'function') onModelsReady();
     updateButtonState();
     runAutoMode();      // 支持 ?auto=1 直接跑一遍（演示/测试用）
   } catch (err) {

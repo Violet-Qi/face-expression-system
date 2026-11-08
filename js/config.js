@@ -250,3 +250,8 @@ const galleryNote       = $('galleryNote');
 const galleryPhotoCount = $('galleryPhotoCount');
 const galleryPersonCount= $('galleryPersonCount');
 
+/* 封面（进去之前那一屏） */
+const cover             = $('cover');
+const coverStart        = $('coverStart');
+const coverStatus       = $('coverStatus');
+

@@ -89,7 +89,7 @@ body {
   background: #fff;
   color: var(--text);
   cursor: pointer;
-  transition: background .15s, border-color .15s;
+  transition: background .15s linear, border-color .15s linear;
 }
 
 .btn:hover { border-color: var(--primary); color: var(--primary); }
@@ -231,7 +231,7 @@ body {
   display: block;
   height: 100%;
   border-radius: 7px;
-  transition: width .25s;
+  transition: width .25s linear;
 }
 
 .bar-row .num { width: 96px; flex: none; text-align: right; color: var(--text-muted); }
@@ -314,4 +314,71 @@ td.expr-cell {
 @media (max-width: 640px) {
   .bar-row .num { width: 76px; }
   .card .v { font-size: 22px; }
+}
+
+/* ============================================================
+   管理台动效层 v2（2026-11-08，与主站同一套非线性曲线）
+   入场 ease-out / 弹出带过冲的 back；同样尊重 prefers-reduced-motion
+   ============================================================ */
+@keyframes fxInUp {
+  from { opacity: 0; transform: translateY(28px) scale(.98); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes fxPop {
+  from { opacity: 0; transform: scale(.9); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes fxInDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* 登录后标题栏从上落下 */
+.admin-header { animation: fxInDown 320ms cubic-bezier(.22,1,.36,1) both; }
+
+/* 指标卡逐个弹出（带过冲） */
+.card { animation: fxPop 320ms cubic-bezier(.34,1.56,.64,1) both; }
+.card:nth-child(1) { animation-delay: 60ms; }
+.card:nth-child(2) { animation-delay: 120ms; }
+.card:nth-child(3) { animation-delay: 180ms; }
+.card:nth-child(4) { animation-delay: 240ms; }
+.card:nth-child(5) { animation-delay: 300ms; }
+
+/* 区块从下往上 */
+section.card { animation: fxInUp 320ms cubic-bezier(.22,1,.36,1) both; }
+
+/* 按钮过渡（非线性） */
+.btn, .btn-primary, .btn-danger, select {
+  transition:
+    background-color 140ms cubic-bezier(.22,1,.36,1),
+    border-color     140ms cubic-bezier(.22,1,.36,1),
+    color            140ms cubic-bezier(.22,1,.36,1),
+    box-shadow       140ms cubic-bezier(.22,1,.36,1),
+    transform        140ms cubic-bezier(.34,1.56,.64,1),
+    opacity          140ms cubic-bezier(.22,1,.36,1);
+}
+.btn:not(:disabled):active,
+.btn-primary:not(:disabled):active,
+.btn-danger:not(:disabled):active {
+  transform: translateY(2px) scale(.965);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn:not(:disabled):hover { transform: translateY(-2px); }
+}
+
+/* 分布条 / 趋势柱状的轨道推进 */
+.bar-row .track > i { transition: width 320ms cubic-bezier(.22,1,.36,1); }
+
+/* 表格行悬停 */
+tbody tr { transition: background-color 140ms cubic-bezier(.22,1,.36,1); }
+
+/* 登录表单 */
+form, .login-form { animation: fxInUp 320ms cubic-bezier(.22,1,.36,1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+  }
 }

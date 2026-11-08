@@ -112,7 +112,7 @@ body {
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: background .15s, color .15s;
+  transition: background .15s linear, color .15s linear;
 }
 
 .mode-btn:hover { color: var(--text); }
@@ -304,7 +304,7 @@ body {
   display: block;
   height: 100%;
   border-radius: 5px;
-  transition: width .25s;
+  transition: width .25s linear;
 }
 
 .stat-count {
@@ -343,8 +343,9 @@ body {
    overflow:hidden 只在动画期间生效，避免平时裁掉面板外阴影。 */
 .page.is-animating {
   overflow: hidden;
-  transition: height 280ms cubic-bezier(.4, 0, .2, 1),
-              opacity 200ms ease;
+  /* 2026-11-08：跟着"线性动画"统一改成 linear */
+  transition: height 280ms linear,
+              opacity 200ms linear;
 }
 
 /* 尊重系统的「减少动态效果」设置 */
@@ -425,7 +426,7 @@ body {
   justify-content: center;
   gap: 0;
   padding: 10px;
-  transition: border-color .15s, background .15s;
+  transition: border-color .15s linear, background .15s linear;
   overflow: hidden;
 }
 
@@ -472,7 +473,7 @@ body {
   background: #fff;
   color: var(--text);
   cursor: pointer;
-  transition: background .15s, border-color .15s;
+  transition: background .15s linear, border-color .15s linear;
 }
 
 .btn-ghost:hover { background: #f3f5f7; border-color: #c2cad3; }
@@ -751,7 +752,7 @@ body {
   width: 0;
   background: var(--primary);
   border-radius: 3px;
-  transition: width .25s;
+  transition: width .25s linear;
 }
 /* ---------------- 视频文件识别页 ---------------- */
 .video-bar {
@@ -937,7 +938,7 @@ body {
   border: none;
   border-radius: var(--radius);
   cursor: pointer;
-  transition: background .15s;
+  transition: background .15s linear;
 }
 
 .btn-primary:hover:not(:disabled)  { background: var(--primary-hover); }
@@ -962,4 +963,381 @@ body {
   font-size: 12px;
   color: #9aa4af;
   text-align: center;
+}
+
+
+/* ============================================================
+   动效层 v2（2026-11-08 第二版）
+   ------------------------------------------------------------
+   第一版 linear + 纯 opacity，反馈"看不出区别"。这一版：
+
+   1. 非线性缓动：入场 ease-out（前快后缓），弹出带过冲的 back 曲线
+   2. 方向性入场：状态条从上、左栏从左、结果区从右、下方模块从下，逐个错峰
+   3. 切换模式：旧页面飞出（180ms）+ 新页面模块飞入（320ms）
+
+   ⚠️ 入场动画**全部挂在 `body.fx-anim` 下**。原因：同名 animation 不会
+   自动重启，必须让元素的计算值从 `none` 变到有，JS 才能靠
+   "移除类 → 强制回流 → 加回类" 重播。所以不要再往基础选择器上写
+   animation，否则切换时不会动。
+
+   三条保护：
+   - `.hidden` 状态立刻改变（测试读它），飞出只是视觉层
+   - 参与尺寸测量的元素（画布容器）只淡入，不加 transform
+   - 尊重 prefers-reduced-motion
+   ============================================================ */
+
+:root {
+  --ease-out:  cubic-bezier(.22, 1, .36, 1);   /* 前快后缓：飞入 */
+  --ease-back: cubic-bezier(.34, 1.56, .64, 1); /* 带过冲：弹出 */
+  --ease-in:   cubic-bezier(.4, 0, 1, 1);      /* 后快：飞出 */
+  --dur-fast:  140ms;
+  --dur:       320ms;
+  --dur-out:   160ms;
+}
+
+/* ---------------- 关键帧 ---------------- */
+@keyframes fxInLeft  { from { opacity:0; transform: translateX(-76px) scale(.96); } to { opacity:1; transform: none; } }
+@keyframes fxInRight { from { opacity:0; transform: translateX(76px)  scale(.96); } to { opacity:1; transform: none; } }
+@keyframes fxInUp    { from { opacity:0; transform: translateY(52px)  scale(.97); } to { opacity:1; transform: none; } }
+@keyframes fxInDown  { from { opacity:0; transform: translateY(-40px) scale(.97); } to { opacity:1; transform: none; } }
+@keyframes fxPop     { from { opacity:0; transform: scale(.88); }                 to { opacity:1; transform: none; } }
+@keyframes fxFadeIn  { from { opacity:0; }                                        to { opacity:1; } }
+
+@keyframes fxOutLeft  { from { opacity:1; transform: none; } to { opacity:0; transform: translateX(-64px) scale(.96); } }
+@keyframes fxOutRight { from { opacity:1; transform: none; } to { opacity:0; transform: translateX(64px)  scale(.96); } }
+@keyframes fxOutDown  { from { opacity:1; transform: none; } to { opacity:0; transform: translateY(40px)  scale(.97); } }
+
+/* ============================================================
+   一、入场（首屏 + 切换模式重播，都走 body.fx-anim）
+   ============================================================ */
+
+/* 顶部：从上落下 */
+body.fx-anim .status-bar,
+body.fx-anim .mode-switch {
+  animation: fxInDown var(--dur) var(--ease-out) both;
+}
+body.fx-anim .mode-switch { animation-delay: 60ms; }
+
+/* 左栏从左、结果区从右 */
+body.fx-anim #leftPanel,
+body.fx-anim #videoCanvasWrap {
+  animation: fxInLeft var(--dur) var(--ease-back) both;
+  animation-delay: 100ms;
+}
+body.fx-anim #imageCanvasWrap,
+body.fx-anim #cameraCanvasWrap,
+body.fx-anim .page:not([hidden]) .panel:not(#leftPanel) {
+  animation: fxInRight var(--dur) var(--ease-back) both;
+  animation-delay: 150ms;
+}
+
+/* 下方模块从下往上 */
+body.fx-anim .group-box  { animation: fxInUp var(--dur) var(--ease-out) both; animation-delay: 190ms; }
+body.fx-anim .stats-box  { animation: fxInUp var(--dur) var(--ease-out) both; animation-delay: 230ms; }
+body.fx-anim .trend-box  { animation: fxInUp var(--dur) var(--ease-out) both; animation-delay: 270ms; }
+body.fx-anim .video-bar,
+body.fx-anim .video-stats,
+body.fx-anim .video-progress { animation: fxInUp var(--dur) var(--ease-out) both; }
+body.fx-anim #detectBtn  { animation: fxInUp var(--dur) var(--ease-back) both; animation-delay: 310ms; }
+body.fx-anim .page-footer { animation: fxInUp var(--dur) var(--ease-out) both; animation-delay: 370ms; }
+
+/* 卡片逐个弹出 */
+body.fx-anim .person-card { animation: fxPop var(--dur) var(--ease-back) both; }
+body.fx-anim .person-card:nth-child(1) { animation-delay: 60ms; }
+body.fx-anim .person-card:nth-child(2) { animation-delay: 130ms; }
+body.fx-anim .person-card:nth-child(3) { animation-delay: 200ms; }
+body.fx-anim .person-card:nth-child(4) { animation-delay: 270ms; }
+body.fx-anim .person-card:nth-child(5) { animation-delay: 340ms; }
+
+/* 画面/画布淡入（不加位移，避免影响尺寸测量） */
+body.fx-anim #sourceImg,
+body.fx-anim #resultImg,
+body.fx-anim #overlay,
+body.fx-anim #cameraOverlay,
+body.fx-anim #videoOverlay,
+body.fx-anim .trend-canvas-wrap canvas {
+  animation: fxFadeIn var(--dur) var(--ease-out) both;
+}
+
+/* ============================================================
+   一之二、切换模式时的入场（body.fx-switch）
+   ------------------------------------------------------------
+   和首屏入场（fx-anim）分开，原因：
+   · 页签、状态条、主按钮**不该跟着飞** —— 切换时它们得一直在，
+     否则用户会觉得导航消失了、按钮找不到了
+   · 只让"页面内容"飞进来，时长也更短，切换才利落
+   ============================================================ */
+body.fx-switch .page:not([hidden]) .panel:not(#leftPanel) {
+  animation: fxInRight 300ms var(--ease-back) both;
+}
+body.fx-switch .page:not([hidden]) #leftPanel {
+  animation: fxInLeft 300ms var(--ease-back) both;
+}
+body.fx-switch .page:not([hidden]) .canvas-wrap {
+  animation: fxInRight 300ms var(--ease-back) both;
+  animation-delay: 40ms;
+}
+body.fx-switch .page:not([hidden]) .video-bar,
+body.fx-switch .page:not([hidden]) .video-stats,
+body.fx-switch .page:not([hidden]) .video-progress {
+  animation: fxInUp 280ms var(--ease-out) both;
+}
+/* ============================================================
+   二、飞出：旧页面在 180ms 内仍然可见并飞走
+   ------------------------------------------------------------
+   `.hidden` 已经立刻为 true（测试读它），这里用更具体的选择器把
+   display 改回来 —— 纯视觉，不影响任何状态。
+   ============================================================ */
+/* JS 会先把旧页面的 rect 写成内联 top/left/width/height，
+   再挂上 .is-leaving —— 这样它就"停在原地飞走"，不影响布局。 */
+.page.is-leaving {
+  display: block !important;
+  position: fixed;
+  margin: 0;
+  pointer-events: none;
+  z-index: 5;
+  animation: fxOutLeft var(--dur-out) var(--ease-out) both;
+}
+.page.is-leaving.fx-out-right { animation-name: fxOutRight; }
+.page.is-leaving.fx-out-down  { animation-name: fxOutDown; }
+
+/* ============================================================
+   三、交互过渡
+   ============================================================ */
+button,
+.btn,
+.btn-primary,
+.btn-ghost,
+.mode-btn,
+select {
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    border-color     var(--dur-fast) var(--ease-out),
+    color            var(--dur-fast) var(--ease-out),
+    box-shadow       var(--dur-fast) var(--ease-out),
+    transform        var(--dur-fast) var(--ease-back),
+    opacity          var(--dur-fast) var(--ease-out);
+}
+
+button:not(:disabled):active,
+.btn:not(:disabled):active,
+.btn-primary:not(:disabled):active,
+.btn-ghost:not(:disabled):active,
+.mode-btn:active {
+  transform: translateY(2px) scale(.965);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button:not(:disabled):hover,
+  .btn:not(:disabled):hover,
+  .btn-ghost:not(:disabled):hover { transform: translateY(-2px); }
+  #detectBtn:not(:disabled):hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 26px rgba(255, 122, 26, .38);
+  }
+  .mode-btn:not(.is-active):hover { transform: translateY(-1px); }
+}
+
+.mode-btn {
+  transition:
+    background-color var(--dur) var(--ease-out),
+    box-shadow       var(--dur) var(--ease-out),
+    color            var(--dur) var(--ease-out),
+    transform        var(--dur-fast) var(--ease-back);
+}
+.mode-btn.is-active { transform: scale(1.02); }
+
+.batch-bar > i,
+.video-progress > i { transition: width var(--dur) var(--ease-out); }
+
+.status-bar {
+  transition:
+    background-color var(--dur) var(--ease-out),
+    border-color     var(--dur) var(--ease-out),
+    color            var(--dur) var(--ease-out);
+}
+
+.group-opt-label,
+.mask-opt-label {
+  transition:
+    background-color var(--dur) var(--ease-out),
+    border-color     var(--dur) var(--ease-out),
+    transform        var(--dur-fast) var(--ease-back);
+}
+.group-opt-label:has(input:checked),
+.mask-opt-label:has(input:checked) {
+  background: #fff7f0;
+  border-color: #ffd7b0;
+}
+
+tbody tr { transition: background-color var(--dur-fast) var(--ease-out); }
+
+/* ---------------- 减少动态效果 ---------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+  }
+  .page.is-animating { transition: none; }
+  .page.is-leaving { display: none !important; }
+}
+/* ============================================================
+   五、封面（2026-11-08）
+   ------------------------------------------------------------
+   进页面先看到封面，点「开始体验」才进入功能页 —— 入场动画在点击
+   那一刻才播（否则一打开就播完，用户根本没看见）。
+   模型在封面后面照常加载，加载完按钮才解封，顺便把等待时间藏起来。
+   ============================================================ */
+.cover {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 手机适配：
+     · overflow-x:hidden 必须有 —— 里面的标签行会有一点点超宽，
+       不锁住的话会把整个文档撑宽（fixed 元素的宽度又跟着文档走，
+       形成"越撑越宽"的循环），手机上就会出现横向滚动条
+     · overflow-y:auto —— 横屏 / 小屏时内容放不下可以上下滚，不会被裁掉
+     · safe-area 内边距 —— 躲开刘海和底部小白条 */
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding:
+    calc(28px + env(safe-area-inset-top, 0px))
+    calc(28px + env(safe-area-inset-right, 0px))
+    calc(28px + env(safe-area-inset-bottom, 0px))
+    calc(28px + env(safe-area-inset-left, 0px));
+  background:
+    radial-gradient(1100px 520px at 50% -12%, #ffe9d6 0%, rgba(255, 233, 214, 0) 62%),
+    linear-gradient(158deg, #fffaf5 0%, #f4f6f8 46%, #eef3f8 100%);
+  animation: fxFadeIn 380ms var(--ease-out) both;
+}
+
+.cover-inner {
+  width: 100%;
+  /* min-width:0 很关键：flex 子项默认 min-width:auto，会被内容的最小宽度
+     顶住不让收缩；emoji 字体还没加载完时回退字形更宽，就会把整页撑出横向滚动条 */
+  min-width: 0;
+  max-width: 560px;
+  text-align: center;
+}
+
+.cover-title {
+  margin: 0 0 10px;
+  font-size: 32px;
+  line-height: 1.25;
+  letter-spacing: .5px;
+  color: var(--text);
+}
+
+.cover-sub {
+  margin: 0 0 22px;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+/* 功能小标签 */
+.cover-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 26px;
+  min-width: 0;
+}
+.cover-chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 13px;
+  box-shadow: var(--shadow);
+  animation: fxPop 340ms var(--ease-back) both;
+}
+.cover-chip:nth-child(1) { animation-delay:  60ms; }
+.cover-chip:nth-child(2) { animation-delay: 110ms; }
+.cover-chip:nth-child(3) { animation-delay: 160ms; }
+.cover-chip:nth-child(4) { animation-delay: 210ms; }
+.cover-chip:nth-child(5) { animation-delay: 260ms; }
+
+.cover-status {
+  margin: 0 0 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+  min-height: 20px;
+}
+
+/* 开始按钮 */
+.cover-start {
+  padding: 14px 52px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 10px 26px rgba(255, 122, 26, .34);
+  transition:
+    transform  160ms var(--ease-back),
+    box-shadow 160ms var(--ease-out),
+    opacity    160ms var(--ease-out),
+    background-color 160ms var(--ease-out);
+}
+.cover-start:disabled {
+  opacity: .55;
+  cursor: progress;
+  box-shadow: none;
+}
+.cover-start:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(255, 122, 26, .42);
+}
+.cover-start:not(:disabled):active {
+  transform: translateY(1px) scale(.98);
+}
+
+.cover-hint {
+  margin: 16px 0 0;
+  font-size: 12px;
+  color: #98a2ae;
+}
+
+/* 离场：整块上移淡出 */
+.cover.is-leaving {
+  animation: coverUp 420ms var(--ease-in) both;
+  pointer-events: none;
+}
+@keyframes coverUp {
+  to { opacity: 0; transform: translateY(-36px) scale(1.03); }
+}
+
+/* 动画放完后彻底移除，避免它继续占着点击区域 */
+.cover.is-gone { display: none; }
+
+@media (max-width: 760px) {
+  .cover-title { font-size: 24px; }
+  .cover-sub   { font-size: 13px; margin-bottom: 16px; }
+  .cover-chips { margin-bottom: 20px; gap: 6px; }
+  .cover-chip  { padding: 5px 10px; font-size: 12px; }
+  .cover-start { padding: 13px 40px; font-size: 15px; }
+}
+
+/* 矮屏（手机横屏 / 小窗）：把纵向间距整体压一压，争取一屏放下 */
+@media (max-height: 460px) {
+  .cover-title { font-size: 20px; margin-bottom: 6px; }
+  .cover-sub   { margin-bottom: 12px; }
+  .cover-chips { margin-bottom: 14px; }
+  .cover-hint  { display: none; }
+  .cover-start { padding: 11px 36px; font-size: 14px; }
 }

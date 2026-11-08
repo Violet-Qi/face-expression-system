@@ -163,12 +163,16 @@ function applyView(animate) {
 
   // 找出当前正在显示、且不是目标的那一页（用于取旧高度做过渡）
   let from = null;
+  let fromMode = null;
   Object.keys(pages).forEach(k => {
-    if (pages[k] !== to && !pages[k].hidden) from = pages[k];
+    if (pages[k] !== to && !pages[k].hidden) { from = pages[k]; fromMode = k; }
   });
 
   // 记下旧页面的高度，用于高度过渡（必须在隐藏之前取）
   const fromHeight = (animate && from) ? from.offsetHeight : 0;
+
+  // 动效：给旧页面拍快照，让它稍后"原地飞出"（必须在 renderView 隐藏它之前）
+  if (animate && from) startLeaveFx(from, fromMode, mode);
 
   renderView();                                        // 唯一的「状态 → 界面」映射
 
@@ -178,6 +182,74 @@ function applyView(animate) {
   } else {
     to.style.height = '';
   }
+
+  // 动效：新页面的模块从四面八方飞入（重播入场动画）
+  if (animate) replayEnterFx();
+}
+
+/* ============================================================
+   动效：切换模式时「旧页面飞出、新页面飞入」
+   ------------------------------------------------------------
+   关键点：`.hidden` 是**立刻**改变的（业务和测试都读它），
+   飞出纯粹是视觉层 —— 给旧页面挂 .is-leaving 让它在 180ms 内仍然可见，
+   同时用 position:fixed 按快照坐标留在原地，然后飞走。
+   所以页面的显隐状态一秒都没被推迟。
+   ============================================================ */
+
+let fxLeaveTimer = null;
+
+/** 是否关掉了动态效果（系统设置） */
+function fxReduced() {
+  return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+}
+
+function startLeaveFx(oldPage, oldMode, newMode) {
+  if (!oldPage || fxReduced()) return;
+
+  // 上一次还没播完就清掉，避免两层叠在一起
+  if (fxLeaveTimer) { clearTimeout(fxLeaveTimer); fxLeaveTimer = null; }
+  document.querySelectorAll('.page.is-leaving').forEach(el => {
+    el.classList.remove('is-leaving', 'fx-out-left', 'fx-out-right');
+    el.style.top = el.style.left = el.style.width = el.style.height = '';
+  });
+
+  const r = oldPage.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+
+  oldPage.style.top    = r.top + 'px';
+  oldPage.style.left   = r.left + 'px';
+  oldPage.style.width  = r.width + 'px';
+  oldPage.style.height = r.height + 'px';
+  oldPage.classList.add('is-leaving');
+
+  // 往哪飞：新页在右边 → 旧页向左飞；新页在左边 → 旧页向右飞
+  const order = { image: 0, camera: 1, video: 2 };
+  const goRight = (order[newMode] || 0) < (order[oldMode] || 0);
+  oldPage.classList.add(goRight ? 'fx-out-right' : 'fx-out-left');
+
+  fxLeaveTimer = setTimeout(() => {
+    oldPage.classList.remove('is-leaving', 'fx-out-left', 'fx-out-right');
+    oldPage.style.top = oldPage.style.left = oldPage.style.width = oldPage.style.height = '';
+    fxLeaveTimer = null;
+  }, 220);
+}
+
+/**
+ * 切换模式时重播「页面内容飞入」动画。
+ *
+ * 用 `fx-switch` 而不是首屏那个 `fx-anim`：切换时只让页面内容飞，
+ * **页签、状态条、主按钮保持不动** —— 它们跟着飞的话，用户会觉得
+ * 导航和主操作凭空消失了半秒。
+ *
+ * 原理：动画挂在 `body.fx-switch` 下，所以"移除类 → 强制回流 → 加回类"
+ * 会让元素的计算 animation-name 从 none 变回有值，动画才会重新播放。
+ * 直接改样式没用 —— 同名动画不会自动重启。
+ */
+function replayEnterFx() {
+  if (fxReduced()) return;
+  document.body.classList.remove('fx-switch');
+  void document.body.offsetWidth;      // 强制回流，重置动画
+  document.body.classList.add('fx-switch');
 }
 
 function switchMode(target) {
@@ -484,6 +556,73 @@ probeReportBackend().then(ok => {
 });
 
 window.addEventListener('DOMContentLoaded', initModels);
+
+/* ============================================================
+   封面：点「开始体验」才进入功能页
+   ------------------------------------------------------------
+   为什么要有这一层：
+   · 演示有仪式感，先给一张封面比直接扔个页面好
+   · 把模型加载的等待时间藏起来（模型在封面后面照常加载）
+   · 入场动画在"点开始"那一刻才播（否则一打开就播完，根本看不见）
+
+   测试怎么办：带 ?debug=1 或 ?cover=0 时直接跳过封面，
+   所以 195 项回归一行都不用改。
+   ============================================================ */
+
+let coverEntered = false;
+
+/** 是否跳过封面（测试 / 调试用） */
+function coverSuppressed() {
+  const q = new URLSearchParams(location.search);
+  return q.has('debug') || q.get('cover') === '0';
+}
+
+/** 重播首屏那套入场动画（从四面八方飞入） */
+function replayBootFx() {
+  if (fxReduced()) return;
+  document.body.classList.remove('fx-anim');
+  void document.body.offsetWidth;      // 强制回流，让动画重置
+  document.body.classList.add('fx-anim');
+}
+
+/** 点「开始体验」/按回车 → 收起封面并播入场动画 */
+function enterApp() {
+  if (coverEntered) return;
+  coverEntered = true;
+
+  if (cover) {
+    cover.classList.add('is-leaving');
+    // 420ms 动画放完再彻底移除，避免它继续挡住点击
+    setTimeout(() => cover.classList.add('is-gone'), 430);
+  }
+  // 入场动画在这一刻才播
+  replayBootFx();
+}
+
+/** 模型加载完成 → 解开封面上的按钮（由 models.js 调用） */
+function onModelsReady() {
+  if (!coverStart) return;
+  coverStart.disabled = false;
+  coverStart.textContent = '开始体验';
+  if (coverStatus) coverStatus.textContent = '模型已就绪，点击开始进入。';
+}
+
+if (cover && !coverSuppressed()) {
+  coverStart.addEventListener('click', enterApp);
+
+  // 键盘也能进：回车 / 空格
+  document.addEventListener('keydown', e => {
+    if (coverEntered) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      if (!coverStart.disabled) { e.preventDefault(); enterApp(); }
+    }
+  });
+} else if (cover) {
+  // 跳过封面时直接收起来（不播动画，测试要的就是静态最终态）
+  cover.classList.add('is-gone');
+  coverEntered = true;
+}
+
 
 /* ------------------------------------------------------------
    供自动化测试使用的小接口（?debug=1 时才挂到 window 上）。
