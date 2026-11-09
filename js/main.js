@@ -266,7 +266,6 @@ function switchMode(target) {
   applyView(true);                   // true = 带高度过渡
 
   if (target === 'camera') {
-    detectBtn.disabled = !modelsReady;
     showInfo('点击下方「开启摄像头」开始实时识别。', false);
 
   } else if (target === 'video') {
@@ -279,18 +278,31 @@ function switchMode(target) {
 
   } else {
     if (!lastResults) showInfo('尚未开始识别。', false);
-    updateButtonState();
   }
+
+  /* 按钮可用性统一在这里收口。
+     以前是在每个分支里各写一遍，结果 video 分支漏了 —— 从摄像头页切到视频页时，
+     按钮就保留了摄像头页"可用"的状态（明明没选视频却点得动）。 */
+  updateButtonState();
 }
 
-/** 主按钮可用性：图片模式=有图，视频模式=已载入视频；摄像头模式不限制 */
+/**
+ * 主按钮可用性（三种模式统一入口，别在别处单独写 detectBtn.disabled）：
+ *   图片：模型就绪 + 有图 + 不在识别中
+ *   摄像头：模型就绪即可（用来开启 / 停止）
+ *   视频：模型就绪 + 已载入视频（或正在分析，此时是"中止分析"）
+ */
 function updateButtonState() {
   if (mode === 'video') {
     // 已载入视频、或正在分析（此时按钮是「中止分析」，要能点）才可点
     detectBtn.disabled = !(modelsReady && (videoReady || videoAnalyzing));
     return;
   }
-  if (mode !== 'image') return;
+  if (mode === 'camera') {
+    // 摄像头模式：模型就绪就能点（开启 / 停止）。摄像头开着时也必须可点，否则停不掉
+    detectBtn.disabled = !modelsReady;
+    return;
+  }
   detectBtn.disabled = !(modelsReady && hasImage() && !busy);
   batchBtn.disabled = !(modelsReady && images.length > 1 && !busy && !batchRunning);
   batchCsvBtn.disabled = batchResults.filter(Boolean).length === 0;

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>基于Web平台的人脸表情识别系统</title>
-  <link rel="stylesheet" href="css/style.css?v=1.5.1">
+  <link rel="stylesheet" href="css/style.css?v=1.5.2">
 </head>
 <body class="fx-anim">
 
@@ -48,6 +48,7 @@
   <header class="page-header">
     <h1>基于Web平台的人脸表情识别系统</h1>
     <p class="subtitle">上传照片，识别检测到的人脸表情。结果仅供演示，不能判断真实情绪。</p>
+  <p class="page-meta">v1.5.2　·　最后更新 2026-11　·　全部计算在浏览器本地完成</p>
   </header>
 
   <!-- ============ 模型加载状态条 ============ -->
@@ -86,7 +87,7 @@
             <div class="drop-inner" id="dropInner">
               <div class="drop-icon">＋</div>
               <p class="drop-text">点击选择图片，或把图片拖到这里</p>
-              <p class="drop-hint">支持 JPG / PNG / WebP / GIF，可一次选多张，每张 10MB 以内</p>
+              <p class="drop-hint">支持 JPG / PNG / WebP / GIF　·　单张不超过 10 MB　·　可一次多选</p>
               <button type="button" class="btn-ghost" id="pickBtn">选择图片</button>
               <button type="button" class="btn-ghost" id="sampleBtn">用示例图片</button>
             </div>
@@ -300,27 +301,28 @@
   <button type="button" id="detectBtn" class="btn-primary" disabled>开始识别</button>
 
   <footer class="page-footer">
-    本系统所有计算均在你的浏览器本地完成，图片和摄像头画面都不会上传到任何服务器。
+    <span class="foot-line">本系统所有计算均在你的浏览器本地完成，图片和摄像头画面都不会上传到任何服务器。</span>
+    <span class="foot-copy">© 2026 Violet &amp; DeepSeek</span>
   </footer>
 
   <!-- face-api.js 主库（已内置 TensorFlow.js，无需联网） -->
-  <script src="lib/face-api.js?v=1.5.1"></script>
+  <script src="lib/face-api.js?v=1.5.2"></script>
 
   <!-- 业务代码按职责拆成 10 个文件。
        顺序有讲究：config 提供全局配置与状态，其余文件都要用它；
        main.js 必须最后 —— 它会在加载时"立即"绑定事件，
        所以要保证前面所有文件里的函数都已经定义好了。
        详见 代码导读.md -->
-  <script src="js/config.js?v=1.5.1"></script>
-  <script src="js/models.js?v=1.5.1"></script>
-  <script src="js/render.js?v=1.5.1"></script>
-  <script src="js/report.js?v=1.5.1"></script>
-  <script src="js/image-select.js?v=1.5.1"></script>
-  <script src="js/recognize.js?v=1.5.1"></script>
-  <script src="js/camera.js?v=1.5.1"></script>
-  <script src="js/video.js?v=1.5.1"></script>
-  <script src="js/stats-trend.js?v=1.5.1"></script>
-  <script src="js/grouping.js?v=1.5.1"></script>
-  <script src="js/main.js?v=1.5.1"></script>
+  <script src="js/config.js?v=1.5.2"></script>
+  <script src="js/models.js?v=1.5.2"></script>
+  <script src="js/render.js?v=1.5.2"></script>
+  <script src="js/report.js?v=1.5.2"></script>
+  <script src="js/image-select.js?v=1.5.2"></script>
+  <script src="js/recognize.js?v=1.5.2"></script>
+  <script src="js/camera.js?v=1.5.2"></script>
+  <script src="js/video.js?v=1.5.2"></script>
+  <script src="js/stats-trend.js?v=1.5.2"></script>
+  <script src="js/grouping.js?v=1.5.2"></script>
+  <script src="js/main.js?v=1.5.2"></script>
 </body>
 </html>
