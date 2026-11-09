@@ -40,7 +40,14 @@ async function initBackend() {
   }
 }
 
+/* 防重入：initModels 可能被调用两次（DOMContentLoaded 已放过时 main.js 会补一次），
+   重复加载会让两套 fetch 抢同一个模型缓存，出现过"卡住不返回"的怪象。 */
+let modelsInitStarted = false;
+
 async function initModels() {
+  if (modelsInitStarted) return;
+  modelsInitStarted = true;
+
   setStatus('正在加载模型，请稍候…', 'loading');
   const t0 = performance.now();
   try {

@@ -555,7 +555,15 @@ probeReportBackend().then(ok => {
   if (!ok) console.info('[report] 未检测到后端接口，匿名统计上报已自动关闭（不影响识别）。');
 });
 
-window.addEventListener('DOMContentLoaded', initModels);
+/* 模型初始化：正常情况下 DOMContentLoaded 会触发。
+   但有个极端情况——如果 main.js 因为缓存/顺序问题在 DOMContentLoaded 之后才执行，
+   那个事件已经放过了，initModels 就永远不会跑，页面会**静默卡在"正在加载模型"**。
+   所以这里兜一次：文档已就绪就直接调（initModels 内部有防重入）。 */
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  initModels();
+} else {
+  window.addEventListener('DOMContentLoaded', initModels);
+}
 
 /* ============================================================
    封面：点「开始体验」才进入功能页
@@ -567,7 +575,17 @@ window.addEventListener('DOMContentLoaded', initModels);
 
    测试怎么办：带 ?debug=1 或 ?cover=0 时直接跳过封面，
    所以 195 项回归一行都不用改。
+
+   ⚠️ 这里**不直接用 config.js 里的 cover / coverStart / coverStatus**，
+   而是在缺失时按 id 兜底取。原因是一次线上事故：部署时 config.js 是旧版本
+   （里面没有这三个引用），于是 `if (cover && ...)` 整块被跳过 ——
+   模型照常加载完，但没人去解锁按钮，页面静默卡在"正在加载模型"，
+   控制台一行报错都没有。兜底之后，即使 config.js 少东西也不会卡死。
    ============================================================ */
+
+const coverEl     = (typeof cover       !== 'undefined' && cover)       || document.getElementById('cover');
+const coverBtnEl  = (typeof coverStart  !== 'undefined' && coverStart)  || document.getElementById('coverStart');
+const coverStatEl = (typeof coverStatus !== 'undefined' && coverStatus) || document.getElementById('coverStatus');
 
 let coverEntered = false;
 
@@ -597,10 +615,10 @@ function enterApp() {
   if (coverEntered) return;
   coverEntered = true;
 
-  if (cover) {
-    cover.classList.add('is-leaving');
+  if (coverEl) {
+    coverEl.classList.add('is-leaving');
     // 420ms 动画放完再彻底移除，避免它继续挡住点击
-    setTimeout(() => cover.classList.add('is-gone'), 430);
+    setTimeout(() => coverEl.classList.add('is-gone'), 430);
   }
   setCoverScrollLock(false);           // 解开滚动锁
   // 入场动画在这一刻才播
@@ -609,26 +627,68 @@ function enterApp() {
 
 /** 模型加载完成 → 解开封面上的按钮（由 models.js 调用） */
 function onModelsReady() {
-  if (!coverStart) return;
-  coverStart.disabled = false;
-  coverStart.textContent = '开始体验';
-  if (coverStatus) coverStatus.textContent = '模型已就绪，点击开始进入。';
+  if (!coverBtnEl) return;
+  coverBtnEl.disabled = false;
+  coverBtnEl.textContent = '开始体验';
+  if (coverStatEl) coverStatEl.textContent = '模型已就绪，点击开始进入。';
 }
 
-if (cover && !coverSuppressed()) {
+/* ============================================================
+   封面兜底（2026-11-08 加上，起因是一次线上事故）
+   ------------------------------------------------------------
+   事故现象：部署后永远停在"正在加载模型"，按钮一直 disabled，
+   控制台却**没有任何报错**。根因是部署时部分 JS 是旧版本/被缓存，
+   `onModelsReady()` 那一棒没接上 —— 模型明明加载完了，却没人去解锁按钮。
+
+   所以这里做两道保险：
+   1. 模型其实已就绪、只是回调没被调 → 自己补一次（自愈）
+   2. 30 秒还没就绪 → 明确告诉用户"加载超时"，别让人以为页面卡死
+   ============================================================ */
+let coverWatchTimer = null;
+
+function startCoverWatchdog() {
+  if (coverWatchTimer) return;
+  let tries = 0;
+  coverWatchTimer = setInterval(() => {
+    if (coverEntered) {
+      clearInterval(coverWatchTimer); coverWatchTimer = null; return;
+    }
+    // 保险 1：模型就绪了但回调没接上 → 补调
+    if (typeof modelsReady !== 'undefined' && modelsReady) {
+      clearInterval(coverWatchTimer); coverWatchTimer = null;
+      onModelsReady();
+      return;
+    }
+    // 保险 2：30 秒（60 × 500ms）还没就绪 → 把静默卡死变成看得见的失败
+    if (++tries >= 60) {
+      clearInterval(coverWatchTimer); coverWatchTimer = null;
+      if (coverStatEl) {
+        coverStatEl.textContent = '模型加载超时（30 秒）：请检查 models/ 目录是否完整，然后刷新页面重试。';
+      }
+      if (coverBtnEl) {
+        coverBtnEl.disabled = false;
+        coverBtnEl.textContent = '刷新重试';
+        coverBtnEl.addEventListener('click', () => location.reload());
+      }
+    }
+  }, 500);
+}
+
+if (coverEl && !coverSuppressed()) {
   setCoverScrollLock(true);
-  coverStart.addEventListener('click', enterApp);
+  coverBtnEl.addEventListener('click', enterApp);
+  startCoverWatchdog();
 
   // 键盘也能进：回车 / 空格
   document.addEventListener('keydown', e => {
     if (coverEntered) return;
     if (e.key === 'Enter' || e.key === ' ') {
-      if (!coverStart.disabled) { e.preventDefault(); enterApp(); }
+      if (!coverBtnEl.disabled) { e.preventDefault(); enterApp(); }
     }
   });
-} else if (cover) {
+} else if (coverEl) {
   // 跳过封面时直接收起来（不播动画，测试要的就是静态最终态）
-  cover.classList.add('is-gone');
+  coverEl.classList.add('is-gone');
   coverEntered = true;
 }
 

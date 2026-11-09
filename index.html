@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>基于Web平台的人脸表情识别系统</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=1.5.1">
 </head>
 <body class="fx-anim">
 
@@ -304,23 +304,23 @@
   </footer>
 
   <!-- face-api.js 主库（已内置 TensorFlow.js，无需联网） -->
-  <script src="lib/face-api.js"></script>
+  <script src="lib/face-api.js?v=1.5.1"></script>
 
   <!-- 业务代码按职责拆成 10 个文件。
        顺序有讲究：config 提供全局配置与状态，其余文件都要用它；
        main.js 必须最后 —— 它会在加载时"立即"绑定事件，
        所以要保证前面所有文件里的函数都已经定义好了。
        详见 代码导读.md -->
-  <script src="js/config.js"></script>
-  <script src="js/models.js"></script>
-  <script src="js/render.js"></script>
-  <script src="js/report.js"></script>
-  <script src="js/image-select.js"></script>
-  <script src="js/recognize.js"></script>
-  <script src="js/camera.js"></script>
-  <script src="js/video.js"></script>
-  <script src="js/stats-trend.js"></script>
-  <script src="js/grouping.js"></script>
-  <script src="js/main.js"></script>
+  <script src="js/config.js?v=1.5.1"></script>
+  <script src="js/models.js?v=1.5.1"></script>
+  <script src="js/render.js?v=1.5.1"></script>
+  <script src="js/report.js?v=1.5.1"></script>
+  <script src="js/image-select.js?v=1.5.1"></script>
+  <script src="js/recognize.js?v=1.5.1"></script>
+  <script src="js/camera.js?v=1.5.1"></script>
+  <script src="js/video.js?v=1.5.1"></script>
+  <script src="js/stats-trend.js?v=1.5.1"></script>
+  <script src="js/grouping.js?v=1.5.1"></script>
+  <script src="js/main.js?v=1.5.1"></script>
 </body>
 </html>
