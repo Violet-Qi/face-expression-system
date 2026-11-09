@@ -108,7 +108,7 @@ async function recognizeCurrentImage(draw) {
   const t0 = performance.now();
   const options = new faceapi.TinyFaceDetectorOptions({
     inputSize: INPUT_SIZE,
-    scoreThreshold: SCORE_TH
+    scoreThreshold: scoreThresholdNow()
   });
   let chain = faceapi
     .detectAllFaces(resultImg, options)   // 检测所有人脸

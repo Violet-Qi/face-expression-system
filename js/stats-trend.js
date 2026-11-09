@@ -48,7 +48,7 @@ function renderStats() {
   statsContent.innerHTML = '';
 
   // 找到出现次数最多的那一类，用它作为 100% 宽度基准
-  const keys = Object.keys(EXPR_CN);
+  const keys = EXPR_KEYS_7;
   let max = 1;
   keys.forEach(k => { if (stats[k] > max) max = stats[k]; });
 
@@ -338,7 +338,7 @@ function renderTrendLegend() {
   const total = trendData.length || 1;
 
   trendLegend.innerHTML = '';
-  Object.keys(EXPR_CN).forEach(k => {
+  EXPR_KEYS_7.forEach(k => {
     if (!counts[k]) return;
     const share = (counts[k] / total * 100).toFixed(0);
     const item = document.createElement('span');
@@ -382,7 +382,7 @@ function csvField(v) {
 function exportTrendCsv() {
   if (!trendData.length) { showInfo('还没有可导出的数据。', true); return; }
 
-  const exprKeys = Object.keys(EXPR_CN);
+  const exprKeys = EXPR_KEYS_7;
   const baseMs = trendData[0].time;
 
   const rows = [

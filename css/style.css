@@ -1564,3 +1564,290 @@ body.cover-open {
 @media (prefers-reduced-motion: reduce) {
   .page-fx { display: none; }
 }
+
+/* ============================================================
+   七、设置抽屉（2026-11-09，v1.6.0）
+   ------------------------------------------------------------
+   · 入口在页头右上角，平时不占版面（不喧宾夺主）
+   · 抽屉 + 遮罩都是 fixed，不改变文档流，也不会产生滚动条
+   · 三个滑块只调「判定规则」，面板里明确写了不是"提高准确率"
+   ============================================================ */
+
+/* 页头是「标题区 + 设置按钮」两列：按钮独立占一列，绝不压到标题文字
+   （早先绝对定位到右上角，1280 宽时正好贴住标题末尾，窄屏直接叠上去） */
+.page-header {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.header-main { flex: 1; min-width: 0; }
+
+.settings-btn {
+  flex: none;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--text-muted);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              background var(--dur-fast) var(--ease-out);
+}
+.settings-btn:hover { color: var(--text); border-color: var(--border-strong); background: #fff; }
+.settings-btn-ico { font-size: 14px; line-height: 1; }
+
+/* ---------- 遮罩 ---------- */
+.drawer-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 940;
+  background: rgba(20, 26, 34, .28);
+  opacity: 0;
+  transition: opacity 240ms var(--ease-out);
+}
+.drawer-mask.is-open { opacity: 1; }
+
+/* ---------- 抽屉本体 ---------- */
+.drawer {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  z-index: 950;
+  width: 392px;
+  max-width: 92vw;
+  display: flex;
+  flex-direction: column;
+  background: var(--card);
+  border-left: 1px solid var(--border);
+  box-shadow: -14px 0 40px rgba(16, 42, 80, .10);
+  transform: translateX(102%);
+  transition: transform 280ms var(--ease-out);
+}
+.drawer.is-open { transform: translateX(0); }
+
+.drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.drawer-head h2 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 0; }
+.drawer-close {
+  width: 30px; height: 30px;
+  display: grid; place-items: center;
+  font-size: 20px; line-height: 1;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.drawer-close:hover { background: var(--bg); color: var(--text); }
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 20px 28px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.drawer-toast {
+  margin: 0 0 14px;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  color: #2f6b3a;
+  background: #eef7ef;
+  border: 1px solid #cfe6d3;
+  border-radius: 8px;
+}
+
+/* ---------- 分组 ---------- */
+.set-group { margin-bottom: 26px; }
+.set-group h3 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  color: var(--text-muted);
+}
+.set-desc {
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--text-muted);
+}
+
+/* ---------- 滑块行 ---------- */
+.set-row {
+  display: block;
+  margin-bottom: 18px;
+  cursor: pointer;
+}
+.set-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.set-label em {
+  font-style: normal;
+  font-family: "Consolas", "SF Mono", monospace;
+  font-size: 12.5px;
+  color: var(--primary);
+  background: rgba(255, 122, 26, .09);
+  padding: 1px 7px;
+  border-radius: 5px;
+}
+.set-row small {
+  display: block;
+  margin-top: 7px;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.set-row input[type="range"] {
+  width: 100%;
+  height: 4px;
+  margin: 0;
+  appearance: none;
+  background: #e6eaef;
+  border-radius: 999px;
+  outline: none;
+}
+.set-row input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(16, 42, 80, .22);
+  cursor: pointer;
+}
+.set-row input[type="range"]::-moz-range-thumb {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid #fff;
+  cursor: pointer;
+}
+
+/* ---------- 状态 / 按钮 ---------- */
+.set-status {
+  margin: 0 0 12px;
+  padding: 8px 11px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  background: var(--bg);
+  border-radius: 8px;
+}
+.set-status.is-ok { color: #2f6b3a; background: #eef7ef; }
+.set-status.is-warn { color: #8a5a12; background: #fdf6e9; }
+
+.set-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.set-btn {
+  padding: 8px 13px;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: #fff;
+  background: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.set-btn:hover { opacity: .88; }
+.set-btn-ghost { color: var(--text-muted); background: transparent; border-color: var(--border-strong); }
+.set-btn-ghost:hover { color: var(--text); opacity: 1; background: var(--bg); }
+
+.set-import { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.set-import textarea {
+  width: 100%;
+  padding: 9px 11px;
+  font-family: "Consolas", "SF Mono", monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  resize: vertical;
+}
+
+/* ---------- 数据说明 ---------- */
+.set-notes {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--text-muted);
+}
+.set-notes li { margin-bottom: 4px; }
+.set-notes code {
+  padding: 1px 5px;
+  font-family: "Consolas", "SF Mono", monospace;
+  font-size: 11px;
+  color: var(--text);
+  background: var(--bg);
+  border-radius: 4px;
+}
+.set-notes .set-warn {
+  color: #8a5a12;
+  background: #fdf6e9;
+  padding: 7px 10px;
+  border-radius: 7px;
+  list-style: none;
+  margin-left: -18px;
+}
+
+/* ---------- 手机 ---------- */
+@media (max-width: 760px) {
+  .settings-btn { top: 16px; right: 16px; padding: 6px 11px; }
+  .settings-btn-txt { display: none; }
+  .drawer { width: 100%; max-width: 100%; }
+  .drawer-body { padding: 16px 16px 32px; }
+}
+
+/* 系统关掉动效时不要过渡 */
+@media (prefers-reduced-motion: reduce) {
+  .drawer, .drawer-mask, .settings-btn { transition: none; }
+}
+/* 套用分享链接后的提示条（挂在模型状态条下面，可关闭） */
+.preset-note {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -4px 0 12px;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #8a5a12;
+  background: #fdf6e9;
+  border: 1px solid #f0e0c2;
+  border-radius: 8px;
+}
+.preset-note-txt { flex: 1; }
+.preset-note-x {
+  flex: none;
+  width: 22px; height: 22px;
+  display: grid; place-items: center;
+  font-size: 15px; line-height: 1;
+  color: #8a5a12;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+  opacity: .7;
+}
+.preset-note-x:hover { opacity: 1; background: rgba(138, 90, 18, .1); }

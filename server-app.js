@@ -40,7 +40,7 @@ const DATA_DIR  = path.join(ROOT, 'data');
 const DB_FILE   = path.join(DATA_DIR, 'app.db');
 const AUTH_FILE = path.join(DATA_DIR, 'admin.json');
 const SECRET_FILE = path.join(DATA_DIR, 'secret.json');
-const VERSION   = '1.0.0';
+const VERSION = '1.6.0';
 
 const DEFAULT_ADMIN_USER = 'admin';
 const DEFAULT_ADMIN_PASS = 'admin123';   // 首次启动写入；请在管理台里改掉
@@ -133,9 +133,30 @@ db.exec(`
 `);
 db.exec('CREATE INDEX IF NOT EXISTS idx_items_session ON expr_items(session_id)');
 
+/* 设备级设置（v1.6.0）—— 跨设备记住"判定偏好"。
+   ⚠️ 隐私边界：这里**只存一个前端生成的随机 UUID + 几个数字参数**。
+   不存 IP、不存 UA、不存设备型号、不存任何图像或人脸特征。
+   UUID 存在浏览器 localStorage 里，用户清缓存就换新号，旧记录再也对不上（等于退出登录）。 */
+db.exec(`
+  CREATE TABLE IF NOT EXISTS device_settings (
+    device_id  TEXT PRIMARY KEY,
+    payload    TEXT NOT NULL,              -- JSON：{detectThreshold, uncertainThreshold, cameraInterval}
+    updated_at INTEGER NOT NULL
+  )
+`);
+
 /* 统计表里用到的合法表情键（与前端 EXPR_CN 对齐） */
 const EXPR_KEYS = ['neutral', 'happy', 'sad', 'angry', 'fearful', 'disgusted', 'surprised'];
 const KINDS = ['image', 'batch', 'camera', 'video'];
+
+/* 设备设置的合法范围（与前端 SETTINGS_RANGE 对齐）。
+   服务端必须再校验一遍：前端能被绕过，不能信。 */
+const SETTING_SPEC = {
+  detectThreshold:    { min: 0.30, max: 0.80 },
+  uncertainThreshold: { min: 0.00, max: 0.90 },
+  cameraInterval:     { min: 200,  max: 1000 }
+};
+const SETTINGS_MAX_ROWS = 20000;      // 防刷：超过就丢最旧的
 
 /* ---------------- 登录会话（HMAC 签名 Cookie，无状态） ---------------- */
 function sign(payloadB64) {
@@ -229,6 +250,7 @@ function pathTag(pathname, status) {
   }
   if (status === 401 || status === 403) return '[未授权]';
   if (status >= 500) return '[服务器错误]';
+  if (pathname === '/api/settings') return '[设备设置]';
   if (pathname === '/api/report') return '[统计上报]';
   if (pathname === '/api/login') return '[登录]';
   if (pathname === '/api/logout') return '[退出]';
@@ -448,6 +470,65 @@ function apiClear(req, res) {
   return sendJSON(res, 200, { ok: true });
 }
 
+/* ---------------- 设备设置（匿名编号，无需登录） ----------------
+   GET  /api/settings?id=<uuid>   → { ok, payload }  payload 为 null 表示没记录
+   POST /api/settings              → body { id, payload }  upsert
+   两个都不需要登录，也都不记录 IP —— 这是刻意的：设置不属于身份信息。 */
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function cleanSettingsPayload(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return null;
+  for (const key of Object.keys(SETTING_SPEC)) {
+    const spec = SETTING_SPEC[key];
+    let v = Number(raw[key]);
+    if (!isFinite(v)) continue;
+    v = Math.min(spec.max, Math.max(spec.min, v));
+    out[key] = Math.round(v * 1000) / 1000;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+function apiGetSettings(req, res, url) {
+  const id = url.searchParams.get('id') || '';
+  if (!UUID_RE.test(id)) return sendJSON(res, 400, { ok: false, error: 'bad id' });
+  const row = db.prepare('SELECT payload FROM device_settings WHERE device_id = ?').get(id);
+  if (!row) return sendJSON(res, 200, { ok: true, payload: null });
+  let payload = null;
+  try { payload = JSON.parse(row.payload); } catch (e) { payload = null; }
+  return sendJSON(res, 200, { ok: true, payload });
+}
+
+async function apiSaveSettings(req, res) {
+  // 注意：readBody 返回的已经是解析好的对象（空 body 时是 {}），别再多转一次
+  let data;
+  try { data = await readBody(req); } catch (e) { return sendJSON(res, 400, { ok: false, error: 'bad json' }); }
+  const id = String(data && data.id || '');
+  if (!UUID_RE.test(id)) return sendJSON(res, 400, { ok: false, error: 'bad id' });
+  const payload = cleanSettingsPayload(data.payload);
+  if (!payload) return sendJSON(res, 400, { ok: false, error: 'bad payload' });
+  const json = JSON.stringify(payload);
+  if (json.length > 512) return sendJSON(res, 400, { ok: false, error: 'payload too large' });
+
+  db.prepare(`
+    INSERT INTO device_settings (device_id, payload, updated_at) VALUES (?, ?, ?)
+    ON CONFLICT(device_id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at
+  `).run(id, json, Date.now());
+
+  // 防刷：行数超上限就丢最旧的一批（不能无限长）
+  try {
+    const cnt = db.prepare('SELECT COUNT(*) AS c FROM device_settings').get().c;
+    if (cnt > SETTINGS_MAX_ROWS) {
+      db.prepare(`DELETE FROM device_settings WHERE device_id IN (
+        SELECT device_id FROM device_settings ORDER BY updated_at ASC LIMIT ?
+      )`).run(cnt - SETTINGS_MAX_ROWS);
+    }
+  } catch (e) { /* 清理失败不影响主流程 */ }
+
+  return sendJSON(res, 200, { ok: true });
+}
+
 async function apiLogin(req, res) {
   const ip = clientIp(req);
   if (loginBlocked(ip)) return sendJSON(res, 429, { ok: false, error: 'too many attempts' });
@@ -560,6 +641,12 @@ const server = http.createServer(async (req, res) => {
       // --- 无需登录 ---
       if (route === 'health' && req.method === 'GET') {
         return sendJSON(res, 200, { ok: true, version: VERSION, time: Date.now() });
+      }
+      if (route === 'settings' && req.method === 'GET') {
+        return apiGetSettings(req, res, url);
+      }
+      if (route === 'settings' && req.method === 'POST') {
+        return await apiSaveSettings(req, res);
       }
       if (route === 'report' && req.method === 'POST') {
         return await apiReport(req, res);

@@ -50,6 +50,7 @@ const TREND_REDRAW_MS = 300;
 
 /* 模型输出的 7 类表情 → 中文，以及统计图表用的颜色 */
 const EXPR_CN = {
+  uncertain: '不确定',   // 设置里开了「不确定阈值」且最高概率偏低时，整站显示这个
   neutral:   '中性',
   happy:     '高兴',
   sad:       '悲伤',
@@ -58,7 +59,14 @@ const EXPR_CN = {
   disgusted: '厌恶',
   surprised: '惊讶'
 };
+/* 模型真实输出的七类表情键。
+   ⚠️ 统计、CSV、图例都必须用这份清单，**不能用 Object.keys(EXPR_CN)** ——
+   EXPR_CN 里还多一个 'uncertain'，那是「设置里开了不确定阈值」时的显示用标签，
+   不属于模型的输出，混进统计会让列数从 7 变 8、数据也对不上。 */
+const EXPR_KEYS_7 = ['neutral', 'happy', 'sad', 'angry', 'fearful', 'disgusted', 'surprised'];
+
 const EXPR_COLOR = {
+  uncertain: '#b9bec6',   // 灰色：表示「模型拿不准」，不属于七类表情
   neutral:   '#8a94a0',
   happy:     '#ff7a1a',
   sad:       '#4a90d9',

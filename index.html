@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>基于Web平台的人脸表情识别系统</title>
-  <link rel="stylesheet" href="css/style.css?v=1.5.2">
+  <link rel="stylesheet" href="css/style.css?v=1.6.0">
 </head>
 <body class="fx-anim">
 
@@ -46,9 +46,14 @@
 
   <!-- ============ 页头 ============ -->
   <header class="page-header">
-    <h1>基于Web平台的人脸表情识别系统</h1>
-    <p class="subtitle">上传照片，识别检测到的人脸表情。结果仅供演示，不能判断真实情绪。</p>
-  <p class="page-meta">v1.5.2　·　最后更新 2026-11　·　全部计算在浏览器本地完成</p>
+    <div class="header-main">
+      <h1>基于Web平台的人脸表情识别系统</h1>
+      <p class="subtitle">上传照片，识别检测到的人脸表情。结果仅供演示，不能判断真实情绪。</p>
+      <p class="page-meta">v1.6.0　·　最后更新 2026-11　·　全部计算在浏览器本地完成</p>
+    </div>
+    <button type="button" id="settingsBtn" class="settings-btn" aria-label="打开设置" aria-expanded="false" aria-controls="settingsDrawer">
+      <span class="settings-btn-ico">⚙</span><span class="settings-btn-txt">设置</span>
+    </button>
   </header>
 
   <!-- ============ 模型加载状态条 ============ -->
@@ -300,29 +305,98 @@
   <!-- ============ 主按钮 ============ -->
   <button type="button" id="detectBtn" class="btn-primary" disabled>开始识别</button>
 
+  <!-- ============ 设置抽屉 ============ -->
+  <div id="settingsMask" class="drawer-mask" hidden></div>
+  <aside id="settingsDrawer" class="drawer" hidden aria-hidden="true" aria-label="设置面板">
+    <div class="drawer-head">
+      <h2>设置</h2>
+      <button type="button" id="settingsClose" class="drawer-close" aria-label="关闭设置">×</button>
+    </div>
+
+    <div class="drawer-body">
+      <p id="settingsToast" class="drawer-toast" hidden></p>
+
+      <!-- 判定偏好 -->
+      <section class="set-group">
+        <h3>判定偏好</h3>
+        <p class="set-desc">这里改的是<strong>判定规则</strong>，不是模型准确率——准确率由训练决定，改不了。调高偏严格，调低偏宽松。</p>
+
+        <label class="set-row" for="setThreshold">
+          <span class="set-label">人脸检测阈值<em id="setThresholdVal">0.50</em></span>
+          <input type="range" id="setThreshold" min="0.30" max="0.80" step="0.01" value="0.50">
+          <small>调高：漏掉的脸变多，误检变少　·　调低：能检出更多小脸，也更容易把背景认成脸</small>
+        </label>
+
+        <label class="set-row" for="setUncertain">
+          <span class="set-label">不确定阈值<em id="setUncertainVal">0.00</em></span>
+          <input type="range" id="setUncertain" min="0" max="0.90" step="0.05" value="0">
+          <small>最高概率低于这个值就显示「不确定」，不硬给结论。设为 0 表示关闭。</small>
+        </label>
+
+        <label class="set-row" for="setInterval">
+          <span class="set-label">摄像头检测频率<em id="setIntervalVal">400 ms</em></span>
+          <input type="range" id="setInterval" min="200" max="1000" step="50" value="400">
+          <small>间隔越小框跟得越紧、越费 CPU；手机建议 500 ms 以上。</small>
+        </label>
+      </section>
+
+      <!-- 跨设备同步 -->
+      <section class="set-group">
+        <h3>跨设备同步</h3>
+        <p id="settingsSync" class="set-status">正在读取云端设置…</p>
+        <div class="set-actions">
+          <button type="button" id="copyLinkBtn" class="set-btn">复制设置链接</button>
+          <button type="button" id="importLinkBtn" class="set-btn">从链接导入</button>
+          <button type="button" id="resetBtn" class="set-btn set-btn-ghost">恢复默认</button>
+        </div>
+
+        <div id="importBox" class="set-import" hidden>
+          <textarea id="importText" rows="2" placeholder="把设置链接粘贴到这里"></textarea>
+          <button type="button" id="importConfirm" class="set-btn">套用</button>
+        </div>
+
+        <div id="shareFallback" class="set-import" hidden>
+          <textarea id="shareFallbackText" rows="3" readonly></textarea>
+        </div>
+      </section>
+
+      <!-- 数据说明 -->
+      <section class="set-group">
+        <h3>你的设置存在哪里</h3>
+        <ul class="set-notes">
+          <li>本机：浏览器 <code>localStorage</code>，优先使用。</li>
+          <li>服务器：只按一个<strong>随机编号</strong>存取这几项参数，编号是 <code id="deviceIdText">…</code>。</li>
+          <li><strong>不记录 IP、不记录设备型号、不记录任何识别内容</strong>（图片、人脸框、特征都不上传）。</li>
+          <li class="set-warn">清除浏览器数据（缓存 / 本地存储）会让这个编号重新生成，<strong>云端那套设置就找不回来了，等同于退出登录</strong>。想留着就先点「复制设置链接」存起来。</li>
+        </ul>
+      </section>
+    </div>
+  </aside>
+
   <footer class="page-footer">
     <span class="foot-line">本系统所有计算均在你的浏览器本地完成，图片和摄像头画面都不会上传到任何服务器。</span>
     <span class="foot-copy">© 2026 Violet &amp; DeepSeek</span>
   </footer>
 
   <!-- face-api.js 主库（已内置 TensorFlow.js，无需联网） -->
-  <script src="lib/face-api.js?v=1.5.2"></script>
+  <script src="lib/face-api.js?v=1.6.0"></script>
 
   <!-- 业务代码按职责拆成 10 个文件。
        顺序有讲究：config 提供全局配置与状态，其余文件都要用它；
        main.js 必须最后 —— 它会在加载时"立即"绑定事件，
        所以要保证前面所有文件里的函数都已经定义好了。
        详见 代码导读.md -->
-  <script src="js/config.js?v=1.5.2"></script>
-  <script src="js/models.js?v=1.5.2"></script>
-  <script src="js/render.js?v=1.5.2"></script>
-  <script src="js/report.js?v=1.5.2"></script>
-  <script src="js/image-select.js?v=1.5.2"></script>
-  <script src="js/recognize.js?v=1.5.2"></script>
-  <script src="js/camera.js?v=1.5.2"></script>
-  <script src="js/video.js?v=1.5.2"></script>
-  <script src="js/stats-trend.js?v=1.5.2"></script>
-  <script src="js/grouping.js?v=1.5.2"></script>
-  <script src="js/main.js?v=1.5.2"></script>
+  <script src="js/config.js?v=1.6.0"></script>
+<script src="js/settings.js?v=1.6.0"></script>
+  <script src="js/models.js?v=1.6.0"></script>
+  <script src="js/render.js?v=1.6.0"></script>
+  <script src="js/report.js?v=1.6.0"></script>
+  <script src="js/image-select.js?v=1.6.0"></script>
+  <script src="js/recognize.js?v=1.6.0"></script>
+  <script src="js/camera.js?v=1.6.0"></script>
+  <script src="js/video.js?v=1.6.0"></script>
+  <script src="js/stats-trend.js?v=1.6.0"></script>
+  <script src="js/grouping.js?v=1.6.0"></script>
+  <script src="js/main.js?v=1.6.0"></script>
 </body>
 </html>

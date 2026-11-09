@@ -121,7 +121,7 @@ function cameraLoop() {
     }
   })();
 
-  cameraTimer = setTimeout(cameraLoop, CAMERA_INTERVAL);
+  cameraTimer = setTimeout(cameraLoop, cameraIntervalNow());
 }
 
 /** 对摄像头的当前帧做一次检测 + 识别，并把检测框画到叠加层上 */
@@ -133,7 +133,7 @@ async function detectCameraFrame() {
   // 摄像头模式不需要关键点，少跑一个模型，速度更快
   const options = new faceapi.TinyFaceDetectorOptions({
     inputSize: INPUT_SIZE,
-    scoreThreshold: SCORE_TH
+    scoreThreshold: scoreThresholdNow()
   });
   const results = await faceapi
     .detectAllFaces(video, options)

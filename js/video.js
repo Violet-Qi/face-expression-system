@@ -172,7 +172,7 @@ async function analyzeVideo() {
 
   const options = new faceapi.TinyFaceDetectorOptions({
     inputSize: INPUT_SIZE,
-    scoreThreshold: SCORE_TH
+    scoreThreshold: scoreThresholdNow()
   });
 
   let frameIdx = 0, faceFrames = 0, faceTotal = 0;

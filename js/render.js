@@ -32,6 +32,13 @@ function topExpression(expressions) {
   for (const key in expressions) {
     if (expressions[key] > bestVal) { bestVal = expressions[key]; best = key; }
   }
+  /* 用户在设置里开了"不确定阈值"时：最高概率太低就别硬给一个结论。
+     这一步只在**显示层**生效 —— 概率数据原样保留，统计和 CSV 仍按真实 top-1 走，
+     因为"模型其实拿不准"和"统计规则"是两件事，混在一起会让数据失真。 */
+  const th = (typeof curSettings === 'function') ? curSettings().uncertainThreshold : 0;
+  if (th > 0 && bestVal < th) {
+    return { name: 'uncertain', value: bestVal, realName: best, realValue: bestVal };
+  }
   return { name: best, value: bestVal };
 }
 
