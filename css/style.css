@@ -1069,6 +1069,23 @@ body {
 @keyframes fxPop     { from { opacity:0; transform: scale(.88); }                 to { opacity:1; transform: none; } }
 @keyframes fxFadeIn  { from { opacity:0; }                                        to { opacity:1; } }
 
+/* v1.7.1 新增：真·从屏幕外飞入（用于封面和弹窗，位移量更大） */
+@keyframes fxFlyLeft   { from { opacity:0; transform: translateX(-120vw) scale(.94); } to { opacity:1; transform: none; } }
+@keyframes fxFlyRight  { from { opacity:0; transform: translateX(120vw)  scale(.94); } to { opacity:1; transform: none; } }
+@keyframes fxFlyUp     { from { opacity:0; transform: translateY(120vh)  scale(.94); } to { opacity:1; transform: none; } }
+@keyframes fxFlyDown   { from { opacity:0; transform: translateY(-120vh) scale(.94); } to { opacity:1; transform: none; } }
+
+/* 弹窗从下方带过冲弹出 */
+@keyframes fxPopUp     { from { opacity:0; transform: translate(-50%, -46%) scale(.94); } to { opacity:1; transform: translate(-50%, -50%) scale(1); } }
+/* 抽屉从右侧滑入 */
+@keyframes fxSlideIn   { from { opacity:.4; transform: translateX(40px); } to { opacity:1; transform: none; } }
+
+/* 手机端的登录弹窗是「底部抽屉」形态，居中位移不同，得单独一套关键帧 */
+@keyframes fxPopUpSheet {
+  from { opacity: 0; transform: translate(-50%, 6%) scale(.99); }
+  to   { opacity: 1; transform: translate(-50%, 0)   scale(1); }
+}
+
 @keyframes fxOutLeft  { from { opacity:1; transform: none; } to { opacity:0; transform: translateX(-64px) scale(.96); } }
 @keyframes fxOutRight { from { opacity:1; transform: none; } to { opacity:0; transform: translateX(64px)  scale(.96); } }
 @keyframes fxOutDown  { from { opacity:1; transform: none; } to { opacity:0; transform: translateY(40px)  scale(.97); } }
@@ -2059,8 +2076,377 @@ body.cover-open {
 
 @media (max-width: 760px) {
   .auth-panel { width: 100%; max-width: 100%; max-height: 92vh; border-radius: 16px 16px 0 0; top: auto; bottom: 0; transform: translate(-50%, 3%) scale(.99); }
-  .auth-panel.is-open { transform: translate(-50%, 0); }
+  .auth-panel.is-open {
+    transform: translate(-50%, 0);
+    animation: fxPopUpSheet 380ms var(--ease-back) both;
+  }
 }
 .page-footer .foot-links { display: block; margin-top: 5px; font-size: 11.5px; }
 .page-footer .foot-links a { color: var(--text-muted); text-decoration: none; border-bottom: 1px dotted currentColor; }
 .page-footer .foot-links a:hover { color: var(--primary); }
+/* ============================================================
+   封面重做（v1.7.1）—— 与品牌页头统一
+   ------------------------------------------------------------
+   旧版是深蓝底 + 几何色块 + 毛玻璃卡片，跟新的暖色品牌区差太远。
+   新版：页面底色 + 居中 logo + 琥珀体四色品牌名 + 平铺小标签，
+   去掉所有蓝色渐变、斜面几何和玻璃拟态。
+   用「追加覆盖」而不是改旧规则，是为了保留 .cover 的结构与测试兼容。
+   ============================================================ */
+
+.cover {
+  /* 暖色光斑打底，让毛玻璃有东西可模糊（纯色底上 backdrop-filter 等于白做） */
+  background: var(--bg) !important;
+  background-image:
+    radial-gradient(58vmax 40vmax at 14% 8%, rgba(255, 166, 77, .20), transparent 62%),
+    radial-gradient(50vmax 36vmax at 86% 18%, rgba(232, 64, 122, .14), transparent 64%),
+    radial-gradient(46vmax 34vmax at 72% 90%, rgba(124, 77, 255, .13), transparent 64%) !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  /* ⚠️ 必须保持 fixed + inset:0 —— 全屏遮罩的前提。
+     我一度写成 position:relative，封面就变成文档流里的一块，
+     下面直接露出功能页（页头、状态条、页签全看得见）。
+     滚动按原规则：x 锁住防撑宽，y 允许滚动防小屏被裁。 */
+  position: fixed;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+/* 两块大斜面几何 —— 配色跟着品牌走（暖橙 / 紫），不再是深蓝 */
+.cover::before,
+.cover::after {
+  content: '' !important;
+  display: block !important;
+  position: absolute;
+  z-index: 0;
+  border-radius: 38%;
+  pointer-events: none;
+  filter: blur(3px);
+}
+.cover::before {
+  width: 42vmax; height: 42vmax;
+  left: -15vmax; top: -11vmax;
+  transform: rotate(-18deg);
+  background: linear-gradient(135deg, rgba(255, 166, 77, .34), rgba(255, 122, 26, .05) 72%);
+}
+.cover::after {
+  width: 36vmax; height: 36vmax;
+  right: -13vmax; bottom: -13vmax;
+  transform: rotate(22deg);
+  background: linear-gradient(135deg, rgba(124, 77, 255, .26), rgba(30, 136, 229, .05) 72%);
+}
+
+.cover-inner {
+  position: relative;
+  z-index: 1;
+  background: rgba(255, 255, 255, .56) !important;
+  border: 1px solid rgba(255, 255, 255, .72) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 24px 60px rgba(120, 80, 30, .10) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+  backdrop-filter: blur(20px) saturate(140%) !important;
+  padding: 34px 40px 30px !important;
+  max-width: 580px;
+  text-align: center;
+  min-width: 0;
+}
+
+/* 不支持 backdrop-filter 时退回接近实色的白，保证文字可读 */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .cover-inner { background: rgba(255, 255, 255, .93) !important; }
+}
+
+/* 旧版用 ::before 塞了一行大写英文标签，新版不需要 */
+.cover-inner::before { content: none !important; display: none !important; }
+
+.cover-logo {
+  width: 78px;
+  height: 78px;
+  display: block;
+  margin: 0 auto 18px;
+}
+
+/* 品牌名：和页头同一套（琥珀体 + 四色渐变 + 轻微旋转），只是更大 */
+.cover-title.brand {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0 0 12px;
+  font-family: "STHupo", "华文琥珀", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 54px;
+  font-weight: 400;
+  letter-spacing: 2px;
+  line-height: 1.1;
+}
+
+.cover-sub {
+  margin: 0 0 8px;
+  font-size: 16px;
+  letter-spacing: 3px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.cover-desc {
+  margin: 0 0 22px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: var(--text-muted);
+  opacity: .9;
+  overflow-wrap: anywhere;
+}
+
+.cover-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 24px;
+  min-width: 0;
+}
+
+.cover-chip {
+  padding: 5px 13px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: none;
+}
+
+.cover-status {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.cover-start {
+  padding: 13px 48px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #fff;
+  background: var(--primary);
+  border: 0;
+  border-radius: 12px;
+  box-shadow: none;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.cover-start:not(:disabled):hover { background: var(--primary-hover); }
+.cover-start:not(:disabled):active { transform: scale(.98); }
+.cover-start:disabled { background: #dfe3e8; color: #9aa3ad; cursor: default; }
+
+.cover-hint {
+  margin: 16px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  opacity: .85;
+}
+
+/* 手机端收一收 */
+@media (max-width: 760px) {
+  .cover-logo { width: 62px; height: 62px; margin-bottom: 14px; }
+  .cover-title.brand { font-size: 38px; letter-spacing: 1px; gap: 2px; }
+  .cover-sub { font-size: 14px; letter-spacing: 2px; }
+  .cover-desc { font-size: 12px; margin-bottom: 18px; }
+  .cover-chips { gap: 6px; margin-bottom: 20px; }
+  .cover-chip { font-size: 11.5px; padding: 4px 10px; }
+  .cover-start { padding: 12px 40px; }
+}
+
+/* 横屏矮屏也别把按钮顶出屏幕 */
+@media (max-height: 520px) {
+  .cover-logo { width: 48px; height: 48px; margin-bottom: 10px; }
+  .cover-title.brand { font-size: 32px; }
+  .cover-chips, .cover-desc { display: none; }
+}
+
+/* ============================================================
+   动效层 v3（v1.7.1）—— 封面从屏幕外飞入 / 弹窗带过冲 / 面板展开
+   ------------------------------------------------------------
+   要点：
+   1. 全部用非线性缓动（--ease-out 前快后缓、--ease-back 带过冲），
+      不用 linear —— 线性看着"机械"，这是"动效有质感"的关键。
+   2. 封面各元素**错峰进场**（每层延迟 60~90ms），一次性全飞会糊成一团。
+   3. 弹窗/抽屉用 fxPopUp / fxSlideIn，比单纯淡入更有"弹出来"的感觉。
+   4. prefers-reduced-motion 下全部关掉（见文件末尾既有规则）。
+   ============================================================ */
+
+/* ---------- 一、封面：logo 从上方砸下来，四个字左右交替飞入 ---------- */
+.cover:not(.is-gone):not(.is-leaving) .cover-logo {
+  animation: fxFlyDown 620ms var(--ease-out) both;
+}
+.cover:not(.is-gone):not(.is-leaving) .cover-title .ch1 {
+  animation: fxFlyLeft 640ms var(--ease-back) both; animation-delay: 90ms;
+}
+.cover:not(.is-gone):not(.is-leaving) .cover-title .ch2 {
+  animation: fxFlyUp 660ms var(--ease-back) both; animation-delay: 160ms;
+}
+.cover:not(.is-gone):not(.is-leaving) .cover-title .ch3 {
+  animation: fxFlyDown 660ms var(--ease-back) both; animation-delay: 230ms;
+}
+.cover:not(.is-gone):not(.is-leaving) .cover-title .ch4 {
+  animation: fxFlyRight 640ms var(--ease-back) both; animation-delay: 300ms;
+}
+.cover:not(.is-gone):not(.is-leaving) .cover-sub {
+  animation: fxInUp 520ms var(--ease-out) both; animation-delay: 380ms;
+}
+.cover:not(.is-gone):not(.is-leaving) .cover-desc {
+  animation: fxInUp 520ms var(--ease-out) both; animation-delay: 440ms;
+}
+.cover:not(.is-gone):not(.is-leaving) .cover-chips {
+  animation: fxInUp 520ms var(--ease-out) both; animation-delay: 500ms;
+}
+.cover:not(.is-gone):not(.is-leaving) .cover-status {
+  animation: fxFadeIn 420ms var(--ease-out) both; animation-delay: 560ms;
+}
+.cover:not(.is-gone):not(.is-leaving) .cover-start {
+  animation: fxFlyUp 600ms var(--ease-back) both; animation-delay: 620ms;
+}
+.cover:not(.is-gone):not(.is-leaving) .cover-hint {
+  animation: fxFadeIn 460ms var(--ease-out) both; animation-delay: 760ms;
+}
+
+/* ---------- 二、登录/注册弹窗：从下方带过冲弹出，字段逐个跟上 ---------- */
+.auth-panel.is-open {
+  /* ⚠️ 关键帧里必须自己带上 translate(-50%,-50%)：
+     弹窗的居中靠 transform，而动画的 to 会把 transform 整体覆盖掉，
+     写成 transform:none 就会把弹窗甩到右下（实测偏 183px / 144px）。 */
+  animation: fxPopUp 380ms var(--ease-back) both;
+}
+.auth-panel.is-open .auth-head { animation: fxFadeIn 300ms var(--ease-out) both; animation-delay: 60ms; }
+.auth-panel.is-open .auth-field { animation: fxInUp 360ms var(--ease-out) both; }
+.auth-panel.is-open .auth-field:nth-of-type(1) { animation-delay: 90ms; }
+.auth-panel.is-open .auth-field:nth-of-type(2) { animation-delay: 150ms; }
+.auth-panel.is-open .auth-field:nth-of-type(3) { animation-delay: 210ms; }
+.auth-panel.is-open .auth-agree  { animation: fxFadeIn 320ms var(--ease-out) both; animation-delay: 260ms; }
+.auth-panel.is-open .auth-submit { animation: fxInUp 380ms var(--ease-back) both; animation-delay: 300ms; }
+
+/* ---------- 三、用户协议展开：从收起变成展开，而不是"啪"地出现 ---------- */
+.auth-agreement:not([hidden]),
+.set-import:not([hidden]) {
+  animation: fxOpen 340ms var(--ease-out) both;
+  transform-origin: top center;
+}
+@keyframes fxOpen {
+  from { opacity: 0; transform: scaleY(.86) translateY(-6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---------- 四、设置抽屉：滑入 + 内容错峰 ---------- */
+.drawer.is-open .set-group {
+  animation: fxInUp 360ms var(--ease-out) both;
+}
+.drawer.is-open .set-group:nth-of-type(1) { animation-delay: 60ms; }
+.drawer.is-open .set-group:nth-of-type(2) { animation-delay: 130ms; }
+.drawer.is-open .set-group:nth-of-type(3) { animation-delay: 200ms; }
+
+/* ---------- 五、顶部提示条 / 遮罩 ---------- */
+.preset-note {
+  animation: fxInDown 420ms var(--ease-back) both;
+}
+.drawer-mask.is-open { animation: fxFadeIn 220ms var(--ease-out) both; }
+
+/* ---------- 六、结果图片换图时轻微"推入"，避免生硬切换 ---------- */
+#sourceImg, #resultImg {
+  transition: opacity 260ms var(--ease-out);
+}
+
+/* ---------- 七、系统要求减少动效时，一律关掉 ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .cover .cover-logo,
+  .cover .cover-title .ch,
+  .cover .cover-sub, .cover .cover-desc, .cover .cover-chips,
+  .cover .cover-status, .cover .cover-start, .cover .cover-hint,
+  .auth-panel.is-open, .auth-panel.is-open *,
+  .auth-agreement:not([hidden]), .set-import:not([hidden]),
+  .drawer.is-open .set-group, .preset-note, .drawer-mask.is-open {
+    animation: none !important;
+  }
+}
+/* ============================================================
+   动效层 v4（v1.7.1）—— 补上"下半截"和"两个白框"
+   ------------------------------------------------------------
+   上一次的坑：入场动画在点「开始体验」的瞬间就播了，
+   而封面退场要 420ms —— 等封面散开，动画已经播完，所以肉眼看不到。
+   现在把入场延迟到 240ms 再播（见 main.js 的 enterApp），并加大位移。
+
+   新增关键帧 fxRiseUp：从视口下方 60vh 升上来。
+   不用 120vh 是为了避免把文档撑出纵向滚动条。
+   ============================================================ */
+
+@keyframes fxRiseUp {
+  from { opacity: 0; transform: translateY(60vh) scale(.96); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ---------- 两个白框：从左右屏幕外飞入（480ms，比原来更慢更明显）---------- */
+body.fx-anim #leftPanel {
+  animation: fxFlyLeft 480ms var(--ease-out) both;
+}
+body.fx-anim .page:not([hidden]) .panel:not(#leftPanel) {
+  animation: fxFlyRight 480ms var(--ease-out) both;
+  animation-delay: 60ms;
+}
+body.fx-switch .page:not([hidden]) #leftPanel {
+  animation: fxFlyLeft 380ms var(--ease-out) both;
+}
+body.fx-switch .page:not([hidden]) .panel:not(#leftPanel) {
+  animation: fxFlyRight 380ms var(--ease-out) both;
+  animation-delay: 50ms;
+}
+
+/* ---------- 下半截：两个勾选框 + 主按钮 + 页脚，从下方依次升起 ---------- */
+/* ⚠️ 不能用 :nth-of-type —— 它按"同类型兄弟"计数，这两个 div 前面还有别的 div，
+   会一个都匹配不上（我第一版就是这么写错的）。用相邻兄弟选择器最稳。 */
+body.fx-anim .mask-opt {
+  animation: fxRiseUp 520ms var(--ease-out) both;
+  animation-delay: 260ms;
+}
+body.fx-anim .mask-opt + .mask-opt {
+  animation-delay: 350ms;
+}
+body.fx-anim #detectBtn {
+  animation: fxRiseUp 560ms var(--ease-back) both;
+  animation-delay: 420ms;
+}
+body.fx-anim .page-footer {
+  animation: fxFadeIn 460ms var(--ease-out) both;
+  animation-delay: 540ms;
+}
+
+/* 切换模式时按钮不重播（否则每切一次页面按钮都飞一遍，很烦） */
+
+@media (prefers-reduced-motion: reduce) {
+  body.fx-anim #leftPanel,
+  body.fx-anim .page:not([hidden]) .panel:not(#leftPanel),
+  body.fx-anim .mask-opt,
+  body.fx-anim #detectBtn,
+  body.fx-anim .page-footer { animation: none !important; }
+}
+
+/* ============================================================
+   手机端登录弹窗（底部抽屉）—— 必须放在文件最后
+   ------------------------------------------------------------
+   坑：手机端本来是 bottom:0 的底部抽屉，动画用 fxPopUpSheet。
+   但 v3 动效层里的 `.auth-panel.is-open { animation: fxPopUp }` 写在更后面，
+   **同优先级、后出现者胜** —— 手机端被换成了桌面版的 fxPopUp，
+   它的终态是 translate(-50%,-50%)，等于把抽屉往上提了半个高度
+   （实测底部空出 144px = 288/2）。
+   所以这里重新声明一次，靠"在文件最后"把优先级赢回来。
+   ============================================================ */
+@media (max-width: 760px) {
+  .auth-panel {
+    top: auto;
+    bottom: 0;
+    transform: translate(-50%, 3%) scale(.99);
+  }
+  .auth-panel.is-open {
+    transform: translate(-50%, 0);
+    animation: fxPopUpSheet 380ms var(--ease-back) both;
+  }
+}

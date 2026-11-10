@@ -84,6 +84,7 @@ function consumeGuestChance() {
   if (!authAvailable) return;
   if (guestUsedLocal()) return;
   markGuestUsed();
+  syncAuthUI();          // 立刻把「游客体验 1 次」改成「登录 / 注册」
 }
 
 /* ---------------- 与服务器交互 ---------------- */
@@ -174,12 +175,57 @@ function syncAuthUI() {
   }
 }
 
+/* ---------------- 进入应用后主动引导注册 ---------------- */
+
+const PROMPTED_KEY = 'fes.authPrompted.v1';
+
+/**
+ * 进入应用时，如果还没登录，就主动弹一次注册/登录。
+ * 只在**每个会话弹一次**（sessionStorage），避免每次刷新都糊一脸。
+ * ?debug=1 / ?cover=0 下不弹，否则所有自动化测试都会被弹层挡住。
+ */
+function maybePromptAuth() {
+  const q = new URLSearchParams(location.search);
+  if (q.has('debug') || q.get('cover') === '0') return;
+  if (currentUser) return;
+  if (!authAvailable) return;                 // 纯静态部署没有账号系统，别弹
+  try {
+    if (sessionStorage.getItem(PROMPTED_KEY) === '1') return;
+    sessionStorage.setItem(PROMPTED_KEY, '1');
+  } catch (e) { /* 隐私模式忽略 */ }
+  openAuthPanel('welcome');
+}
+
+/* 弹窗打开时锁住背景滚动。
+   两个理由：
+     ① 模态弹窗后面还能滚，体验很怪；
+     ② 页面有滚动条时，fixed 居中会偏「半个滚动条宽度」（实测 1280 宽偏 7px）。
+        锁滚动后滚动条消失，居中就精确了。消失前用 padding 补回宽度，避免内容跳一下。 */
+function lockPageScroll(lock) {
+  const html = document.documentElement;
+  const body = document.body;
+  if (!html || !body) return;
+  if (lock) {
+    const sbw = window.innerWidth - html.clientWidth;   // 滚动条宽度（0 表示本来就没滚动条）
+    html.dataset.prevOverflow = html.style.overflow || '';
+    body.dataset.prevPadding = body.style.paddingRight || '';
+    html.style.overflow = 'hidden';
+    if (sbw > 0) body.style.paddingRight = sbw + 'px';
+  } else {
+    html.style.overflow = html.dataset.prevOverflow || '';
+    body.style.paddingRight = body.dataset.prevPadding || '';
+    delete html.dataset.prevOverflow;
+    delete body.dataset.prevPadding;
+  }
+}
+
 function openAuthPanel(reason) {
   const mask = document.getElementById('authMask');
   const panel = document.getElementById('authPanel');
   if (!mask || !panel) return;
   mask.hidden = false;
   panel.hidden = false;
+  lockPageScroll(true);
   requestAnimationFrame(() => { mask.classList.add('is-open'); panel.classList.add('is-open'); });
   panel.setAttribute('aria-hidden', 'false');
 
@@ -190,6 +236,9 @@ function openAuthPanel(reason) {
       hint.hidden = false;
     } else if (reason === 'need-login') {
       hint.textContent = '请先登录。';
+      hint.hidden = false;
+    } else if (reason === 'welcome') {
+      hint.textContent = '注册一个账号就能保存你的识别统计，也能在管理台看到自己的使用趋势。想先试试的话，以游客身份可以体验 1 次。';
       hint.hidden = false;
     } else {
       hint.hidden = true;
@@ -206,6 +255,7 @@ function closeAuthPanel() {
   if (!mask || !panel) return;
   mask.classList.remove('is-open');
   panel.classList.remove('is-open');
+  lockPageScroll(false);
   panel.setAttribute('aria-hidden', 'true');
   setTimeout(() => { mask.hidden = true; panel.hidden = true; }, 220);
   const err = document.getElementById('authError');

@@ -44,6 +44,18 @@ async function initBackend() {
    重复加载会让两套 fetch 抢同一个模型缓存，出现过"卡住不返回"的怪象。 */
 let modelsInitStarted = false;
 
+/**
+ * 重新加载模型。
+ * 用途：加载卡住（网络抖动 / 缓存混版）时，用户可以在封面上点「重试」，
+ * 不必手动刷新页面。会先解开防重入标记，再重跑一遍完整流程。
+ */
+async function retryInitModels() {
+  modelsInitStarted = false;
+  modelsReady = false;
+  if (typeof setStatus === 'function') setStatus('正在重新加载模型…', 'loading');
+  await initModels();
+}
+
 async function initModels() {
   if (modelsInitStarted) return;
   modelsInitStarted = true;

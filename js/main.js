@@ -599,7 +599,11 @@ const coverEl     = (typeof cover       !== 'undefined' && cover)       || docum
 const coverBtnEl  = (typeof coverStart  !== 'undefined' && coverStart)  || document.getElementById('coverStart');
 const coverStatEl = (typeof coverStatus !== 'undefined' && coverStatus) || document.getElementById('coverStatus');
 
+/* 封面是否已经进过。v1.7.1 起存进 sessionStorage：
+   在功能页按 F5 不会再被封面挡一次（同一标签页内有效）。
+   用 session 而不是 local：开新标签页仍希望看到封面。 */
 let coverEntered = false;
+try { coverEntered = sessionStorage.getItem('fes.coverEntered.v1') === '1'; } catch (e) { coverEntered = false; }
 
 /** 封面期间锁住页面滚动（见 css 的 body.cover-open） */
 function setCoverScrollLock(on) {
@@ -626,6 +630,7 @@ function replayBootFx() {
 function enterApp() {
   if (coverEntered) return;
   coverEntered = true;
+  try { sessionStorage.setItem('fes.coverEntered.v1', '1'); } catch (e) { /* 隐私模式忽略 */ }
 
   if (coverEl) {
     coverEl.classList.add('is-leaving');
@@ -633,8 +638,13 @@ function enterApp() {
     setTimeout(() => coverEl.classList.add('is-gone'), 430);
   }
   setCoverScrollLock(false);           // 解开滚动锁
-  // 入场动画在这一刻才播
-  replayBootFx();
+  /* 入场动画等封面开始散开后再播。
+     原来在点击瞬间就播、320ms 播完，而封面退场要 420ms ——
+     等封面上去了动画早结束，肉眼看不到（用户报"下半截没动画"就是这个原因）。
+     延迟 240ms，动画尾巴正好落在封面散开的时刻。 */
+  setTimeout(replayBootFx, 240);
+    // 没登录的话，进来就主动引导注册（每个会话只弹一次，见 auth.js）
+    if (typeof maybePromptAuth === 'function') setTimeout(maybePromptAuth, 700);
 }
 
 /** 模型加载完成 → 解开封面上的按钮（由 models.js 调用） */
@@ -686,7 +696,13 @@ function startCoverWatchdog() {
   }, 500);
 }
 
-if (coverEl && !coverSuppressed()) {
+/* 本次会话已经进过一次（比如在功能页按了 F5）→ 直接收起封面，不再挡一次。
+   注意：不能走 enterApp()，那会再播一遍入场动画，刷新时会闪一下。 */
+if (coverEl && !coverSuppressed() && coverEntered) {
+  coverEl.classList.add('is-gone');
+  setCoverScrollLock(false);
+
+} else if (coverEl && !coverSuppressed()) {
   setCoverScrollLock(true);
   coverBtnEl.addEventListener('click', enterApp);
   startCoverWatchdog();

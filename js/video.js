@@ -161,6 +161,8 @@ async function analyzeVideo() {
 
   videoAnalyzing = true;
   videoAbortAt = 0;
+  // 分析真的跑起来了才扣游客机会
+  if (typeof consumeGuestChance === 'function') consumeGuestChance();
   videoSummary = null;
   if (videoBar) videoBar.style.width = '0%';
 

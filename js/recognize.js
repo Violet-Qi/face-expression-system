@@ -34,6 +34,8 @@ async function runDetect() {
   try {
     const out = await recognizeCurrentImage(true);
     if (out.aborted) return;
+    // 真正跑出结果了才扣掉游客机会（失败/中止不扣）
+    if (typeof consumeGuestChance === 'function') consumeGuestChance();
 
     const DEBUG = new URLSearchParams(location.search).has('debug');
 

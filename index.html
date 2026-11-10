@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>千颜万花 · Web 人脸表情识别</title>
-  <link rel="icon" type="image/svg+xml" href="assets/logo.svg?v=1.7.0">
-  <link rel="stylesheet" href="css/style.css?v=1.7.0">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg?v=1.7.2">
+  <link rel="stylesheet" href="css/style.css?v=1.7.2">
 </head>
 <body class="fx-anim">
 
@@ -28,20 +28,42 @@
        带 ?debug=1 或 ?cover=0 时由 js/main.js 直接跳过（测试用）。 -->
   <div id="cover" class="cover">
     <div class="cover-inner">
-      <h1 class="cover-title">人脸表情识别系统</h1>
-      <p class="cover-sub">在浏览器里识别 7 种表情 · 图片 / 摄像头 / 视频文件 · 全部本地计算</p>
+      <svg class="cover-logo" viewBox="0 0 64 64" aria-hidden="true">
+        <defs>
+          <linearGradient id="coverGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#ffa64d"/>
+            <stop offset="0.55" stop-color="#ff7a1a"/>
+            <stop offset="1" stop-color="#e85d04"/>
+          </linearGradient>
+        </defs>
+        <g fill="url(#coverGrad)">
+          <path d="M32 7 C 41 16 41 26 32 31 C 23 26 23 16 32 7 Z"/>
+          <path d="M32 7 C 41 16 41 26 32 31 C 23 26 23 16 32 7 Z" transform="rotate(60 32 32)"/>
+          <path d="M32 7 C 41 16 41 26 32 31 C 23 26 23 16 32 7 Z" transform="rotate(120 32 32)"/>
+          <path d="M32 7 C 41 16 41 26 32 31 C 23 26 23 16 32 7 Z" transform="rotate(180 32 32)"/>
+          <path d="M32 7 C 41 16 41 26 32 31 C 23 26 23 16 32 7 Z" transform="rotate(240 32 32)"/>
+          <path d="M32 7 C 41 16 41 26 32 31 C 23 26 23 16 32 7 Z" transform="rotate(300 32 32)"/>
+        </g>
+        <circle cx="32" cy="32" r="5.4" fill="#fff"/>
+        <circle cx="32" cy="32" r="2.1" fill="#ff7a1a"/>
+      </svg>
+      <h1 class="cover-title brand" aria-label="千颜万花">
+        <span class="ch ch1" aria-hidden="true">千</span><span class="ch ch2" aria-hidden="true">颜</span><span class="ch ch3" aria-hidden="true">万</span><span class="ch ch4" aria-hidden="true">花</span>
+      </h1>
+      <p class="cover-sub">Web 人脸表情识别</p>
+      <p class="cover-desc">在浏览器里识别 7 种表情 · 图片 / 摄像头 / 视频文件 · 全部本地计算</p>
 
       <div class="cover-chips">
-        <span class="cover-chip">🔍 人脸检测</span>
-        <span class="cover-chip">😊 7 类表情</span>
-        <span class="cover-chip">👥 人物分组</span>
-        <span class="cover-chip">🎬 视频分析</span>
-        <span class="cover-chip">📊 趋势统计</span>
+        <span class="cover-chip">人脸检测</span>
+        <span class="cover-chip">7 类表情</span>
+        <span class="cover-chip">人物分组</span>
+        <span class="cover-chip">视频分析</span>
+        <span class="cover-chip">趋势统计</span>
       </div>
 
       <p class="cover-status" id="coverStatus">正在加载模型，请稍候…</p>
       <button type="button" class="cover-start" id="coverStart" disabled>加载中…</button>
-      <p class="cover-hint">图片和视频不会上传，全部在你的浏览器里完成 <span class="kao">(๑˃̵ᴗ˂̵)</span></p>
+      <p class="cover-hint">图片和视频不会上传，全部在你的浏览器里完成</p>
     </div>
   </div>
 
@@ -73,7 +95,7 @@
         </h1>
       </div>
       <p class="subtitle">Web 人脸表情识别</p>
-      <p class="page-meta">v1.7.0　·　最后更新 2026-11　·　全部计算在浏览器本地完成</p>
+      <p class="page-meta">v1.7.2　·　最后更新 2026-11　·　全部计算在浏览器本地完成</p>
     </div>
     <div class="header-actions">
       <button type="button" id="authBtn" class="settings-btn auth-btn" aria-label="登录或注册">
@@ -475,25 +497,25 @@
   </footer>
 
   <!-- face-api.js 主库（已内置 TensorFlow.js，无需联网） -->
-  <script src="lib/face-api.js?v=1.7.0"></script>
+  <script src="lib/face-api.js?v=1.7.2"></script>
 
   <!-- 业务代码按职责拆成 10 个文件。
        顺序有讲究：config 提供全局配置与状态，其余文件都要用它；
        main.js 必须最后 —— 它会在加载时"立即"绑定事件，
        所以要保证前面所有文件里的函数都已经定义好了。
        详见 代码导读.md -->
-  <script src="js/config.js?v=1.7.0"></script>
-<script src="js/auth.js?v=1.7.0"></script>
-<script src="js/settings.js?v=1.7.0"></script>
-  <script src="js/models.js?v=1.7.0"></script>
-  <script src="js/render.js?v=1.7.0"></script>
-  <script src="js/report.js?v=1.7.0"></script>
-  <script src="js/image-select.js?v=1.7.0"></script>
-  <script src="js/recognize.js?v=1.7.0"></script>
-  <script src="js/camera.js?v=1.7.0"></script>
-  <script src="js/video.js?v=1.7.0"></script>
-  <script src="js/stats-trend.js?v=1.7.0"></script>
-  <script src="js/grouping.js?v=1.7.0"></script>
-  <script src="js/main.js?v=1.7.0"></script>
+  <script src="js/config.js?v=1.7.2"></script>
+<script src="js/auth.js?v=1.7.2"></script>
+<script src="js/settings.js?v=1.7.2"></script>
+  <script src="js/models.js?v=1.7.2"></script>
+  <script src="js/render.js?v=1.7.2"></script>
+  <script src="js/report.js?v=1.7.2"></script>
+  <script src="js/image-select.js?v=1.7.2"></script>
+  <script src="js/recognize.js?v=1.7.2"></script>
+  <script src="js/camera.js?v=1.7.2"></script>
+  <script src="js/video.js?v=1.7.2"></script>
+  <script src="js/stats-trend.js?v=1.7.2"></script>
+  <script src="js/grouping.js?v=1.7.2"></script>
+  <script src="js/main.js?v=1.7.2"></script>
 </body>
 </html>

@@ -53,6 +53,8 @@ async function startCamera() {
 
     // 画面元素显示出来、占位提示收起、按钮变成"停止" —— 这些显隐统一交给 renderView
     ui.cameraLive = true;
+    // 摄像头真的开起来了才算用掉游客机会
+    if (typeof consumeGuestChance === 'function') consumeGuestChance();
 
     // 本次摄像头会话的匿名统计累计（停止时上报一次）
     cameraAgg = { faces: 0, expr: {}, top: null, topVal: null, startedAt: performance.now() };
