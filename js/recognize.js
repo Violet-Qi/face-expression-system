@@ -21,6 +21,8 @@ function hasImage() {
 }
 
 async function runDetect() {
+  // 游客体验 1 次的限制（见 auth.js）：已登录或纯静态部署时直接放行
+  if (typeof canRunDetection === 'function' && !canRunDetection()) return;
   if (!modelsReady || !hasImage() || busy) return;
 
   busy = true;

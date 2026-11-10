@@ -31,6 +31,8 @@ function cameraErrorMessage(err) {
 }
 
 async function startCamera() {
+  // 游客体验 1 次的限制（见 auth.js）：已登录或纯静态部署时直接放行
+  if (typeof canRunDetection === 'function' && !canRunDetection()) return;
   // 异常处理：浏览器不支持或不是安全上下文
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     showInfo('当前浏览器不支持摄像头，或页面不是通过 localhost / https 打开的。请使用「启动.bat」启动后访问。', true);

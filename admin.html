@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>管理台 · 人脸表情识别系统</title>
+  <title>管理台 · 千颜万花</title>
   <meta name="robots" content="noindex, nofollow">
-  <link rel="stylesheet" href="css/admin.css?v=1.6.0">
+  <link rel="stylesheet" href="css/admin.css?v=1.7.0">
 </head>
 <body>
 
@@ -16,7 +16,7 @@
          ============================================================ -->
     <div class="login-box" id="loginBox">
       <h1>管理台</h1>
-      <p class="sub">基于Web平台的人脸表情识别系统</p>
+      <p class="sub">千颜万花 · Web 人脸表情识别</p>
 
       <form id="loginForm" autocomplete="off">
         <div class="field">
@@ -42,7 +42,7 @@
     <div id="adminBox" hidden>
 
       <div class="topbar">
-        <h1>管理台 <small>人脸表情识别系统 · 匿名统计</small></h1>
+        <h1>千颜万花 · 管理台 <small>匿名统计 · 用户管理</small></h1>
         <span id="whoami" style="font-size:12.5px;color:var(--text-muted)"></span>
         <button type="button" class="btn" id="pwdBtn">改密码</button>
         <button type="button" class="btn" id="logoutBtn">退出</button>
@@ -66,6 +66,66 @@
         <h2>使用趋势 <span class="hint">按天，柱高为会话数</span></h2>
         <canvas id="dayChart"></canvas>
       </div>
+
+<div class="panel">
+  <h2>用户管理 <span class="hint" id="userHint">每行是一个注册用户；游客是未登录的使用</span></h2>
+
+  <div class="panel-tools">
+    <input type="text" id="newUserName" placeholder="用户名（3~20位）" style="padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-family:inherit">
+    <input type="text" id="newUserEmail" placeholder="邮箱" style="padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-family:inherit">
+    <input type="text" id="newUserPass" placeholder="初始密码（≥6位）" style="padding:7px 10px;border:1px solid var(--border);border-radius:7px;font-family:inherit">
+    <button type="button" class="btn btn-primary" id="addUserBtn">新建用户</button>
+    <button type="button" class="btn" id="refreshUsersBtn">刷新</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:56px">ID</th>
+        <th>用户名</th>
+        <th>邮箱</th>
+        <th style="width:88px">状态</th>
+        <th style="width:88px">会话数</th>
+        <th style="width:88px">人脸数</th>
+        <th style="width:150px">最近登录</th>
+        <th style="width:190px">操作</th>
+      </tr>
+    </thead>
+    <tbody id="userBody"><tr><td colspan="8" class="empty">暂无数据</td></tr></tbody>
+  </table>
+  <p class="msg" id="userMsg"></p>
+</div>
+
+<div class="panel">
+  <h2>横向对比 <span class="hint">同一时间段内各用户的使用量（近 30 天）</span></h2>
+  <table>
+    <thead>
+      <tr>
+        <th>用户</th>
+        <th style="width:88px">会话数</th>
+        <th style="width:88px">人脸数</th>
+        <th style="width:110px">平均耗时</th>
+        <th>主导表情</th>
+        <th style="width:150px">最近使用</th>
+      </tr>
+    </thead>
+    <tbody id="compareBody"><tr><td colspan="6" class="empty">暂无数据</td></tr></tbody>
+  </table>
+</div>
+
+<div class="panel" id="userDetailPanel" hidden>
+  <h2><span id="udTitle">用户详情</span> <span class="hint">该用户的各项统计</span></h2>
+  <div class="cards" style="margin-bottom:14px">
+    <div class="card"><div class="k">会话数</div><div class="v" id="udSessions">0</div></div>
+    <div class="card"><div class="k">检出人脸</div><div class="v" id="udFaces">0</div></div>
+    <div class="card"><div class="k">平均耗时</div><div class="v" id="udCost">—<span class="u">ms</span></div></div>
+  </div>
+  <div class="panel-tools"><button type="button" class="btn" id="udClose">收起</button></div>
+  <table>
+    <thead><tr><th>日期</th><th style="width:110px">会话数</th><th style="width:110px">人脸数</th></tr></thead>
+    <tbody id="udDayBody"><tr><td colspan="3" class="empty">暂无数据</td></tr></tbody>
+  </table>
+</div>
 
       <div class="panel">
         <h2>按识别模式 <span class="hint">四种模式各自的使用量</span></h2>
@@ -98,11 +158,11 @@
           <table>
             <thead>
               <tr>
-                <th>#</th><th>时间</th><th>模式</th><th>人脸数</th>
+                <th>#</th><th>用户</th><th>时间</th><th>模式</th><th>人脸数</th>
                 <th>主导表情</th><th>置信度</th><th>耗时</th><th>表情明细</th>
               </tr>
             </thead>
-            <tbody id="listBody"><tr><td colspan="8" class="empty">暂无数据</td></tr></tbody>
+            <tbody id="listBody"><tr><td colspan="9" class="empty">暂无数据</td></tr></tbody>
           </table>
         </div>
         <div class="pager">
@@ -122,6 +182,6 @@
 
   </div>
 
-  <script src="js/admin.js?v=1.6.0"></script>
+  <script src="js/admin.js?v=1.7.0"></script>
 </body>
 </html>

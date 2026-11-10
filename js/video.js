@@ -153,6 +153,8 @@ function abortVideoAnalysis() {
  * 每帧：seek → 检测 → 画框（含打码）→ 记账趋势与统计 → 推进进度。
  */
 async function analyzeVideo() {
+  // 游客体验 1 次的限制（见 auth.js）：已登录或纯静态部署时直接放行
+  if (typeof canRunDetection === 'function' && !canRunDetection()) return;
   if (videoAnalyzing || !videoReady || !modelsReady) return;
 
   const tStarted = performance.now();

@@ -119,7 +119,7 @@ $('pwdBtn').addEventListener('click', async () => {
 
 /* ---------------- 数据刷新 ---------------- */
 async function refreshAll() {
-  await Promise.all([loadStats(), loadList()]);
+  await Promise.all([loadStats(), loadList(), loadUsers(), loadCompare()]);
 }
 
 async function loadStats() {
@@ -167,7 +167,7 @@ function renderKindTable(rows) {
   const body = $('kindBody');
   if (!rows.length) { body.innerHTML = '<tr><td colspan="3" class="empty">暂无数据</td></tr>'; return; }
   body.innerHTML = rows.map(r => `<tr>
-      <td><span class="tag" style="background:${r.kind === 'video' ? '#7a5cd6' : r.kind === 'camera' ? '#3a7bd5' : r.kind === 'batch' ? '#3f9c35' : '#8a94a0'}">${KIND_CN[r.kind] || r.kind}</span></td>
+      <td><span class="kind-chip" style="background:${r.kind === 'video' ? '#7a5cd6' : r.kind === 'camera' ? '#3a7bd5' : r.kind === 'batch' ? '#3f9c35' : '#8a94a0'}">${KIND_CN[r.kind] || r.kind}</span></td>
       <td>${r.sessions}</td>
       <td>${r.faces}</td>
     </tr>`).join('');
@@ -286,7 +286,7 @@ async function loadList() {
 
   const body = $('listBody');
   if (!d.rows.length) {
-    body.innerHTML = '<tr><td colspan="8" class="empty">暂无数据<br><span style="font-size:12px">在主页面做一次识别，数据就会出现在这里</span></td></tr>';
+    body.innerHTML = '<tr><td colspan="9" class="empty">暂无数据<br><span style="font-size:12px">在主页面做一次识别，数据就会出现在这里</span></td></tr>';
     return;
   }
 
@@ -296,8 +296,10 @@ async function loadList() {
     const topCn = r.top ? (EXPR_CN[r.top] || r.top) : '—';
     const conf = (r.top_val == null) ? '—' : (r.top_val * 100).toFixed(1) + '%';
     const cost = (r.cost_ms == null) ? '—' : r.cost_ms + ' ms';
+    const userCn = r.username || '游客';
     return `<tr>
       <td>${r.id}</td>
+      <td>${userCn === '游客' ? '<span class="tag">游客</span>' : '<b>' + esc(userCn) + '</b>'}</td>
       <td>${fmtTime(r.at)}</td>
       <td>${kindCn}</td>
       <td>${r.faces}</td>
@@ -364,6 +366,158 @@ $('clearBtn').addEventListener('click', async () => {
 
 // 窗口尺寸变化时重画柱状图（手机上转屏很常见，不重画会糊/拉伸）
 let dayResizeTimer = null;
+/* ============================================================
+   用户管理（v1.7.0）
+   ============================================================ */
+
+function fmtDate(ms) {
+  if (!ms) return '—';
+  const d = new Date(ms);
+  const p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+}
+
+const STATUS_CN = { active: '启用', disabled: '停用', guest: '游客' };
+
+async function loadUsers() {
+  const body = $('userBody');
+  let d;
+  try { d = await api('/api/users?days=30'); }
+  catch (e) { body.innerHTML = '<tr><td colspan="9" class="empty">加载失败：' + esc(e.message) + '</td></tr>'; return; }
+
+  const rows = (d.users || []).map(u => {
+    const st = STATUS_CN[u.status] || u.status;
+    return '<tr>'
+      + '<td>' + u.id + '</td>'
+      + '<td><b>' + esc(u.username) + '</b></td>'
+      + '<td>' + esc(u.email || '—') + '</td>'
+      + '<td><span class="tag ' + (u.status === 'active' ? 'tag-ok' : 'tag-off') + '">' + st + '</span></td>'
+      + '<td>' + u.sessions + '</td>'
+      + '<td>' + u.faces + '</td>'
+      + '<td>' + fmtDate(u.last_login_at) + '</td>'
+      + '<td>'
+      +   '<button type="button" class="btn btn-mini" data-act="detail" data-id="' + u.id + '">详情</button>'
+      +   '<button type="button" class="btn btn-mini" data-act="toggle" data-id="' + u.id + '" data-status="' + u.status + '">' + (u.status === 'active' ? '停用' : '启用') + '</button>'
+      +   '<button type="button" class="btn btn-mini btn-danger" data-act="del" data-id="' + u.id + '" data-name="' + esc(u.username) + '">删除</button>'
+      + '</td>'
+      + '</tr>';
+  });
+
+  // 游客单独一行（不能删、不能停用，只能看详情）
+  if (d.guest) {
+    rows.push('<tr class="row-guest">'
+      + '<td>—</td>'
+      + '<td><b>游客</b> <span class="tag">未登录</span></td>'
+      + '<td>—</td>'
+      + '<td>' + STATUS_CN.guest + '</td>'
+      + '<td>' + d.guest.sessions + '</td>'
+      + '<td>' + d.guest.faces + '</td>'
+      + '<td>—</td>'
+      + '<td><button type="button" class="btn btn-mini" data-act="detail" data-id="guest">详情</button></td>'
+      + '</tr>');
+  }
+
+  body.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="9" class="empty">还没有注册用户</td></tr>';
+  const hint = $('userHint');
+  if (hint) hint.textContent = '共 ' + (d.users || []).length + ' 个注册用户 + 游客 · 近 ' + d.days + ' 天';
+}
+
+async function loadCompare() {
+  const body = $('compareBody');
+  let d;
+  try { d = await api('/api/users/compare?days=30'); }
+  catch (e) { body.innerHTML = '<tr><td colspan="6" class="empty">加载失败：' + esc(e.message) + '</td></tr>'; return; }
+
+  const rows = (d.data || []).map(r => '<tr>'
+    + '<td><b>' + esc(r.username) + '</b></td>'
+    + '<td>' + r.sessions + '</td>'
+    + '<td>' + r.faces + '</td>'
+    + '<td>' + (r.avgCost ? r.avgCost + ' ms' : '—') + '</td>'
+    + '<td>' + (r.top ? (EXPR_CN[r.top] || r.top) + ' <span class="hint">×' + r.topCount + '</span>' : '—') + '</td>'
+    + '<td>' + fmtDate(r.lastAt) + '</td>'
+    + '</tr>');
+  body.innerHTML = rows.length ? rows.join('') : '<tr><td colspan="6" class="empty">暂无数据</td></tr>';
+}
+
+async function loadUserDetail(id) {
+  const panel = $('userDetailPanel');
+  let d;
+  try { d = await api('/api/users/detail?id=' + encodeURIComponent(id) + '&days=30'); }
+  catch (e) { msg('加载详情失败：' + e.message, 'err'); return; }
+
+  panel.hidden = false;
+  $('udTitle').textContent = '用户详情 · ' + (d.user.username || '游客');
+  $('udSessions').textContent = (d.totals && d.totals.sessions) || 0;
+  $('udFaces').textContent = (d.totals && d.totals.faces) || 0;
+  const c = d.totals && d.totals.avgCost ? Math.round(d.totals.avgCost) : 0;
+  $('udCost').innerHTML = (c || '—') + '<span class="u">ms</span>';
+
+  const rows = (d.byDay || []).map(r => '<tr><td>' + r.day + '</td><td>' + r.sessions + '</td><td>' + r.faces + '</td></tr>');
+  $('udDayBody').innerHTML = rows.length ? rows.join('') : '<tr><td colspan="3" class="empty">该用户暂无数据</td></tr>';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+/* 表格里的按钮统一事件委托 */
+document.addEventListener('click', async e => {
+  const btn = e.target.closest('[data-act]');
+  if (!btn) return;
+  const act = btn.getAttribute('data-act');
+  const id = btn.getAttribute('data-id');
+
+  if (act === 'detail') return loadUserDetail(id);
+
+  if (act === 'toggle') {
+    const cur = btn.getAttribute('data-status');
+    const next = cur === 'active' ? 'disabled' : 'active';
+    try {
+      await api('/api/users/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: Number(id), status: next })
+      });
+      msg(next === 'active' ? '已启用' : '已停用', 'ok');
+      loadUsers();
+    } catch (err) { msg('操作失败：' + err.message, 'err'); }
+    return;
+  }
+
+  if (act === 'del') {
+    const name = btn.getAttribute('data-name') || id;
+    if (!confirm('确定删除用户「' + name + '」？\n\n该用户的统计记录会转为游客数据保留，不会丢失。')) return;
+    try {
+      await api('/api/users?id=' + encodeURIComponent(id), { method: 'DELETE' });
+      msg('已删除，统计已转为游客', 'ok');
+      loadUsers(); loadCompare();
+    } catch (err) { msg('删除失败：' + err.message, 'err'); }
+    return;
+  }
+});
+
+if ($('addUserBtn')) {
+  $('addUserBtn').addEventListener('click', async () => {
+    const username = ($('newUserName').value || '').trim();
+    const email = ($('newUserEmail').value || '').trim();
+    const password = $('newUserPass').value || '';
+    if (!username || !email || !password) { msg('用户名、邮箱、密码都要填', 'err'); return; }
+    try {
+      await api('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, password })
+      });
+      msg('已创建用户 ' + username, 'ok');
+      $('newUserName').value = ''; $('newUserEmail').value = ''; $('newUserPass').value = '';
+      loadUsers(); loadCompare();
+    } catch (err) { msg('创建失败：' + err.message, 'err'); }
+  });
+}
+if ($('refreshUsersBtn')) $('refreshUsersBtn').addEventListener('click', () => { loadUsers(); loadCompare(); });
+if ($('udClose')) $('udClose').addEventListener('click', () => { $('userDetailPanel').hidden = true; });
+
 window.addEventListener('resize', () => {
   if (dayResizeTimer) clearTimeout(dayResizeTimer);
   dayResizeTimer = setTimeout(() => renderDayChart(lastDayRows), 200);

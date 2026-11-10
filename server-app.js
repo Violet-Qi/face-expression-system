@@ -40,7 +40,7 @@ const DATA_DIR  = path.join(ROOT, 'data');
 const DB_FILE   = path.join(DATA_DIR, 'app.db');
 const AUTH_FILE = path.join(DATA_DIR, 'admin.json');
 const SECRET_FILE = path.join(DATA_DIR, 'secret.json');
-const VERSION = '1.6.0';
+const VERSION = '1.7.0';
 
 const DEFAULT_ADMIN_USER = 'admin';
 const DEFAULT_ADMIN_PASS = 'admin123';   // 首次启动写入；请在管理台里改掉
@@ -133,6 +133,41 @@ db.exec(`
 `);
 db.exec('CREATE INDEX IF NOT EXISTS idx_items_session ON expr_items(session_id)');
 
+/* 游客体验记录（v1.7.0）—— 只记"这个随机 UUID 已经体验过一次"。
+   同样是随机串，不含 IP、不含设备信息。清缓存可绕过，这是刻意接受的代价：
+   它是登录门槛，不是安全防线。 */
+db.exec(`
+  CREATE TABLE IF NOT EXISTS guest_trials (
+    gid TEXT PRIMARY KEY,
+    at  INTEGER NOT NULL
+  )
+`);
+
+/* 用户表（v1.7.0）—— 学生自己注册：用户名 + 邮箱 + 密码（不做邮箱验证）
+   ⚠️ 只存用户名、邮箱、密码哈希（scrypt 加盐）。**不存任何图像、人脸特征、识别结果。**
+   老版本产生的统计记录 user_id 为 NULL，界面统一归入「游客」账号。 */
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    username      TEXT    NOT NULL UNIQUE,
+    email         TEXT    NOT NULL,
+    pass_hash     TEXT    NOT NULL,
+    created_at    INTEGER NOT NULL,
+    last_login_at INTEGER,
+    status        TEXT    NOT NULL DEFAULT 'active'   -- active / disabled
+  )
+`);
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_name ON users(username)');
+
+/* 统计会话增加 user_id（NULL = 游客，用来承接升级前的历史数据） */
+try {
+  const cols = db.prepare("PRAGMA table_info(sessions)").all().map(c => c.name);
+  if (cols.indexOf('user_id') < 0) db.exec('ALTER TABLE sessions ADD COLUMN user_id INTEGER');
+} catch (e) {
+  console.error('[初始化] sessions.user_id 列检查失败：', e.message);
+}
+db.exec('CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)');
+
 /* 设备级设置（v1.6.0）—— 跨设备记住"判定偏好"。
    ⚠️ 隐私边界：这里**只存一个前端生成的随机 UUID + 几个数字参数**。
    不存 IP、不存 UA、不存设备型号、不存任何图像或人脸特征。
@@ -157,6 +192,9 @@ const SETTING_SPEC = {
   cameraInterval:     { min: 200,  max: 1000 }
 };
 const SETTINGS_MAX_ROWS = 20000;      // 防刷：超过就丢最旧的
+
+/* 用户登录态有效期（7 天，比管理员长——普通用户使用周期更长） */
+const USER_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 /* ---------------- 登录会话（HMAC 签名 Cookie，无状态） ---------------- */
 function sign(payloadB64) {
@@ -250,6 +288,10 @@ function pathTag(pathname, status) {
   }
   if (status === 401 || status === 403) return '[未授权]';
   if (status >= 500) return '[服务器错误]';
+  if (pathname === '/api/users') return '[用户管理]';
+  if (pathname === '/api/user/register') return '[注册]';
+  if (pathname === '/api/user/login') return '[用户登录]';
+  if (pathname === '/api/guest-used') return '[游客体验]';
   if (pathname === '/api/settings') return '[设备设置]';
   if (pathname === '/api/report') return '[统计上报]';
   if (pathname === '/api/login') return '[登录]';
@@ -349,10 +391,14 @@ async function apiReport(req, res) {
   }
 
   const at = Date.now();
+  /* 归属：登录了就记到该用户名下，没登录就是游客（user_id 为 NULL）。
+     这里只写一个整数 id，不写任何身份或图像信息。 */
+  const me = getStudent(req);
+  const userId = me ? me.id : null;
   const insSession = db.prepare(
-    'INSERT INTO sessions (at, kind, faces, top, top_val, cost_ms, dur_ms, client) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO sessions (at, kind, faces, top, top_val, cost_ms, dur_ms, client, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
   );
-  const r = insSession.run(at, kind, faces, top, topVal, costMs, durMs, client);
+  const r = insSession.run(at, kind, faces, top, topVal, costMs, durMs, client, userId);
   const sid = Number(r.lastInsertRowid);
 
   const insItem = db.prepare('INSERT INTO expr_items (session_id, name, count) VALUES (?, ?, ?)');
@@ -411,14 +457,18 @@ function apiSessions(req, res, url) {
   const kind = url.searchParams.get('kind');
   const offset = (page - 1) * size;
 
-  const where = (kind && KINDS.indexOf(kind) >= 0) ? 'WHERE kind = ?' : '';
+  // 带用户名的列表查询：v1.7.0 起每条会话都归属到某个用户（未登录的归「游客」）
+  const where = (kind && KINDS.indexOf(kind) >= 0) ? 'WHERE s.kind = ?' : '';
   const args = where ? [kind] : [];
 
-  const total = db.prepare('SELECT COUNT(*) AS c FROM sessions ' + where).get(...args).c;
+  const total = db.prepare('SELECT COUNT(*) AS c FROM sessions s ' + where).get(...args).c;
 
   const rows = db.prepare(
-    'SELECT id, at, kind, faces, top, top_val, cost_ms, dur_ms FROM sessions ' + where +
-    ' ORDER BY id DESC LIMIT ? OFFSET ?'
+    `SELECT s.id, s.at, s.kind, s.faces, s.top, s.top_val, s.cost_ms, s.dur_ms,
+            COALESCE(u.username, '游客') AS username
+       FROM sessions s LEFT JOIN users u ON u.id = s.user_id
+       ${where}
+      ORDER BY s.id DESC LIMIT ? OFFSET ?`
   ).all(...args, size, offset);
 
   // 把每条会话的表情明细一并带出来
@@ -431,7 +481,9 @@ function apiSessions(req, res, url) {
 /** 导出 CSV（带 UTF-8 BOM，Excel 直接打开不乱码） */
 function apiExportCsv(req, res) {
   const rows = db.prepare(
-    'SELECT id, at, kind, faces, top, top_val, cost_ms, dur_ms FROM sessions ORDER BY id'
+    `SELECT s.id, s.at, s.kind, s.faces, s.top, s.top_val, s.cost_ms, s.dur_ms,
+            COALESCE(u.username, '游客') AS username
+       FROM sessions s LEFT JOIN users u ON u.id = s.user_id ORDER BY s.id`
   ).all();
   const itemStmt = db.prepare('SELECT name, count FROM expr_items WHERE session_id = ?');
 
@@ -439,11 +491,12 @@ function apiExportCsv(req, res) {
     const s = (v === null || v === undefined) ? '' : String(v);
     return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   };
-  const lines = ['序号,时间,模式,人脸数,主导表情,置信度,耗时(毫秒),时长(毫秒),表情明细'];
+  const lines = ['序号,用户,时间,模式,人脸数,主导表情,置信度,耗时(毫秒),时长(毫秒),表情明细'];
   rows.forEach(r => {
     const items = itemStmt.all(r.id).map(i => i.name + ':' + i.count).join(' ');
     lines.push([
       r.id,
+      r.username || '游客',
       new Date(r.at).toLocaleString('zh-CN'),
       r.kind, r.faces, r.top || '',
       r.top_val == null ? '' : (r.top_val * 100).toFixed(1) + '%',
@@ -527,6 +580,284 @@ async function apiSaveSettings(req, res) {
   } catch (e) { /* 清理失败不影响主流程 */ }
 
   return sendJSON(res, 200, { ok: true });
+}
+
+/* ---------------- 用户系统（v1.7.0） ----------------
+   学生自己注册：用户名 + 邮箱 + 密码，不做邮箱验证。
+   密码用 scrypt 加盐哈希存成 "salt:hash" 一个字段，永远不存明文。
+   ⚠️ 用户表里**没有**任何图像、人脸特征、识别相关字段 —— 这条边界不变。 */
+
+const USERNAME_RE = /^[A-Za-z0-9_\u4e00-\u9fa5]{3,20}$/;
+const EMAIL_RE    = /^[^\s@]{1,64}@[^\s@]{1,64}\.[A-Za-z]{2,10}$/;
+
+/** 取当前登录用户（学生）；没登录返回 null */
+function getStudent(req) {
+  const p = verifyToken(parseCookies(req).fes_user);
+  if (!p) return null;
+  /* makeToken(user) 会把传进去的对象整体塞进 payload.u，所以 uid 在 p.u.uid 里；
+     这里两种形态都兼容，避免以后再踩。 */
+  const uid = (p.u && typeof p.u === 'object') ? p.u.uid : p.uid;
+  if (!uid) return null;
+  try {
+    const row = db.prepare('SELECT id, username, email, status FROM users WHERE id = ?').get(uid);
+    if (!row || row.status !== 'active') return null;
+    return row;
+  } catch (e) { return null; }
+}
+
+/** 学生端注册 */
+async function apiRegister(req, res) {
+  let body;
+  try { body = await readBody(req); } catch (e) { return sendJSON(res, 400, { ok: false, error: 'bad json' }); }
+
+  const username = String(body.username || '').trim();
+  const email    = String(body.email || '').trim();
+  const password = String(body.password || '');
+
+  if (!USERNAME_RE.test(username)) return sendJSON(res, 400, { ok: false, error: '用户名需 3~20 位，仅限中英文、数字、下划线' });
+  if (!EMAIL_RE.test(email))       return sendJSON(res, 400, { ok: false, error: '邮箱格式不正确' });
+  if (password.length < 6 || password.length > 64) return sendJSON(res, 400, { ok: false, error: '密码需 6~64 位' });
+
+  const exists = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+  if (exists) return sendJSON(res, 409, { ok: false, error: '这个用户名已被使用' });
+
+  const h = hashPassword(password);
+  const now = Date.now();
+  try {
+    const r = db.prepare(
+      'INSERT INTO users (username, email, pass_hash, created_at, last_login_at, status) VALUES (?, ?, ?, ?, ?, ?)'
+    ).run(username, email, h.salt + ':' + h.hash, now, now, 'active');
+    const uid = Number(r.lastInsertRowid);
+    const token = makeToken({ uid, u: 'student:' + uid });
+    res.setHeader('Set-Cookie',
+      `fes_user=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(USER_SESSION_TTL_MS / 1000)}`);
+    return sendJSON(res, 200, { ok: true, user: { id: uid, username, email } });
+  } catch (e) {
+    return sendJSON(res, 500, { ok: false, error: '注册失败：' + e.message });
+  }
+}
+
+/** 学生端登录 */
+async function apiUserLogin(req, res) {
+  let body;
+  try { body = await readBody(req); } catch (e) { return sendJSON(res, 400, { ok: false, error: 'bad json' }); }
+
+  const username = String(body.username || '').trim();
+  const password = String(body.password || '');
+  if (!username || !password) return sendJSON(res, 400, { ok: false, error: '请填写用户名和密码' });
+
+  const row = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+  const fail = () => sendJSON(res, 401, { ok: false, error: '用户名或密码不正确' });
+  if (!row) return fail();
+  if (row.status !== 'active') return sendJSON(res, 403, { ok: false, error: '该账号已被停用' });
+
+  const [salt, hash] = String(row.pass_hash).split(':');
+  const calc = hashPassword(password, salt);
+  if (!safeEqualHex(hash, calc.hash)) return fail();
+
+  db.prepare('UPDATE users SET last_login_at = ? WHERE id = ?').run(Date.now(), row.id);
+  const token = makeToken({ uid: row.id, u: 'student:' + row.id });
+  res.setHeader('Set-Cookie',
+    `fes_user=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(USER_SESSION_TTL_MS / 1000)}`);
+  return sendJSON(res, 200, { ok: true, user: { id: row.id, username: row.username, email: row.email } });
+}
+
+/** 学生端登出 */
+function apiUserLogout(req, res) {
+  res.writeHead(200, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Set-Cookie': 'fes_user=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'
+  });
+  return res.end(JSON.stringify({ ok: true }));
+}
+
+/** 记录一次游客体验（前端在第一次识别后调用） */
+async function apiGuestUsed(req, res) {
+  let data;
+  try { data = await readBody(req); } catch (e) { return sendJSON(res, 400, { ok: false, error: 'bad json' }); }
+  const id = String(data && data.id || '');
+  if (!UUID_RE.test(id)) return sendJSON(res, 400, { ok: false, error: 'bad id' });
+  try {
+    db.prepare('INSERT INTO guest_trials (gid, at) VALUES (?, ?) ON CONFLICT(gid) DO UPDATE SET at = excluded.at')
+      .run(id, Date.now());
+  } catch (e) { /* 记不上也不影响前端拦截 */ }
+  return sendJSON(res, 200, { ok: true });
+}
+
+/** 当前登录状态（前端启动时问一次） */
+function apiWhoami(req, res) {
+  const u = getStudent(req);
+  if (!u) return sendJSON(res, 200, { ok: true, user: null });
+  return sendJSON(res, 200, { ok: true, user: { id: u.id, username: u.username, email: u.email } });
+}
+
+/* ---------------- 管理台：用户管理与对比（v1.7.0） ----------------
+   管理员可以：列出用户、新建、删除、停用/启用、看单个用户详情。
+   还能做两种对比：
+     · 横向 —— 同一时间段内，多个用户的使用量/人脸数/主导表情
+     · 纵向 —— 某个用户按天的使用趋势
+   注意：这里读的全是**统计数字**，没有任何图像或人脸特征。 */
+
+/** 用户列表（含每个用户的统计汇总） */
+function apiAdminUsers(req, res, url) {
+  const days = Math.max(1, Math.min(365, Number(url.searchParams.get('days')) || 30));
+  const since = Date.now() - days * 24 * 3600 * 1000;
+
+  const users = db.prepare(`
+    SELECT u.id, u.username, u.email, u.created_at, u.last_login_at, u.status,
+           (SELECT COUNT(*) FROM sessions s WHERE s.user_id = u.id AND s.at >= ?) AS sessions,
+           (SELECT COALESCE(SUM(faces),0) FROM sessions s WHERE s.user_id = u.id AND s.at >= ?) AS faces
+      FROM users u ORDER BY u.id ASC
+  `).all(since, since);
+
+  // 游客（历史数据 + 未登录使用）
+  const guest = db.prepare(`
+    SELECT COUNT(*) AS sessions, COALESCE(SUM(faces),0) AS faces
+      FROM sessions WHERE user_id IS NULL AND at >= ?
+  `).get(since);
+
+  const byDay = db.prepare(
+    `SELECT date(at/1000, 'unixepoch', 'localtime') AS day, COUNT(*) AS sessions, COALESCE(SUM(faces),0) AS faces
+       FROM sessions WHERE at >= ? GROUP BY day ORDER BY day ASC`
+  ).all(since);
+
+  return sendJSON(res, 200, {
+    ok: true,
+    days,
+    users,
+    guest: { id: null, username: '游客', email: '', status: 'guest', sessions: guest.sessions, faces: guest.faces },
+    byDay
+  });
+}
+
+/** 新建用户（管理员代建） */
+async function apiAdminUserCreate(req, res) {
+  let body;
+  try { body = await readBody(req); } catch (e) { return sendJSON(res, 400, { ok: false, error: 'bad json' }); }
+  const username = String(body.username || '').trim();
+  const email    = String(body.email || '').trim();
+  const password = String(body.password || '');
+  if (!USERNAME_RE.test(username)) return sendJSON(res, 400, { ok: false, error: '用户名需 3~20 位，仅限中英文、数字、下划线' });
+  if (!EMAIL_RE.test(email))       return sendJSON(res, 400, { ok: false, error: '邮箱格式不正确' });
+  if (password.length < 6 || password.length > 64) return sendJSON(res, 400, { ok: false, error: '密码需 6~64 位' });
+  if (db.prepare('SELECT id FROM users WHERE username = ?').get(username)) {
+    return sendJSON(res, 409, { ok: false, error: '用户名已存在' });
+  }
+  const h = hashPassword(password);
+  const now = Date.now();
+  const r = db.prepare(
+    'INSERT INTO users (username, email, pass_hash, created_at, last_login_at, status) VALUES (?, ?, ?, ?, NULL, ?)'
+  ).run(username, email, h.salt + ':' + h.hash, now, 'active');
+  return sendJSON(res, 200, { ok: true, id: Number(r.lastInsertRowid) });
+}
+
+/** 删除用户（连带它的统计记录） */
+function apiAdminUserDelete(req, res, url) {
+  const id = Number(url.searchParams.get('id'));
+  if (!id) return sendJSON(res, 400, { ok: false, error: 'bad id' });
+  const row = db.prepare('SELECT id FROM users WHERE id = ?').get(id);
+  if (!row) return sendJSON(res, 404, { ok: false, error: '用户不存在' });
+
+  // 统计记录不真删，改为转成游客（保留数据完整性，也不会让图表凭空少一截）
+  db.prepare('UPDATE sessions SET user_id = NULL WHERE user_id = ?').run(id);
+  db.prepare('DELETE FROM users WHERE id = ?').run(id);
+  return sendJSON(res, 200, { ok: true, movedToGuest: true });
+}
+
+/** 停用 / 启用 */
+async function apiAdminUserStatus(req, res) {
+  let body;
+  try { body = await readBody(req); } catch (e) { return sendJSON(res, 400, { ok: false, error: 'bad json' }); }
+  const id = Number(body.id);
+  const status = body.status === 'active' ? 'active' : 'disabled';
+  if (!id) return sendJSON(res, 400, { ok: false, error: 'bad id' });
+  const row = db.prepare('SELECT id FROM users WHERE id = ?').get(id);
+  if (!row) return sendJSON(res, 404, { ok: false, error: '用户不存在' });
+  db.prepare('UPDATE users SET status = ? WHERE id = ?').run(status, id);
+  return sendJSON(res, 200, { ok: true, status });
+}
+
+/** 单个用户详情（纵向趋势 + 表情分布 + 模式分布） */
+function apiAdminUserDetail(req, res, url) {
+  const idParam = url.searchParams.get('id');
+  const days = Math.max(1, Math.min(365, Number(url.searchParams.get('days')) || 30));
+  const since = Date.now() - days * 24 * 3600 * 1000;
+
+  // id=guest 看游客数据
+  const isGuest = idParam === 'guest' || idParam === 'null';
+  const id = isGuest ? null : Number(idParam);
+  if (!isGuest && !id) return sendJSON(res, 400, { ok: false, error: 'bad id' });
+
+  let user = null;
+  if (!isGuest) {
+    user = db.prepare('SELECT id, username, email, created_at, last_login_at, status FROM users WHERE id = ?').get(id);
+    if (!user) return sendJSON(res, 404, { ok: false, error: '用户不存在' });
+  } else {
+    user = { id: null, username: '游客', email: '', status: 'guest' };
+  }
+
+  const cond = isGuest ? 'user_id IS NULL AND at >= ?' : 'user_id = ? AND at >= ?';
+  const args = isGuest ? [since] : [id, since];
+
+  const totals = db.prepare(`SELECT COUNT(*) AS sessions, COALESCE(SUM(faces),0) AS faces, COALESCE(AVG(cost_ms),0) AS avgCost FROM sessions WHERE ${cond}`).get(...args);
+  const byKind = db.prepare(`SELECT kind, COUNT(*) AS sessions, COALESCE(SUM(faces),0) AS faces FROM sessions WHERE ${cond} GROUP BY kind`).all(...args);
+  const byDay = db.prepare(`SELECT date(at/1000,'unixepoch','localtime') AS day, COUNT(*) AS sessions, COALESCE(SUM(faces),0) AS faces FROM sessions WHERE ${cond} GROUP BY day ORDER BY day`).all(...args);
+  const byExpr = db.prepare(
+    `SELECT i.name AS name, SUM(i.count) AS count FROM expr_items i JOIN sessions s ON s.id = i.session_id
+      WHERE ${cond.replace(/user_id/g, 's.user_id').replace(/at >= \?/g, 's.at >= ?')}
+      GROUP BY i.name ORDER BY count DESC`
+  ).all(...args);
+
+  return sendJSON(res, 200, { ok: true, user, days, totals, byKind, byDay, byExpr });
+}
+
+/** 横向对比：多个用户在同一时间段的核心指标 */
+function apiAdminCompare(req, res, url) {
+  const days = Math.max(1, Math.min(365, Number(url.searchParams.get('days')) || 30));
+  const since = Date.now() - days * 24 * 3600 * 1000;
+
+  const rows = db.prepare(`
+    SELECT COALESCE(u.username, '游客') AS username,
+           COALESCE(u.id, 0) AS uid,
+           COUNT(s.id) AS sessions,
+           COALESCE(SUM(s.faces),0) AS faces,
+           COALESCE(AVG(s.cost_ms),0) AS avgCost,
+           MIN(s.at) AS firstAt,
+           MAX(s.at) AS lastAt
+      FROM sessions s LEFT JOIN users u ON u.id = s.user_id
+     WHERE s.at >= ?
+     GROUP BY s.user_id
+     ORDER BY faces DESC
+  `).all(since);
+
+  // 每人主导表情
+  const topByUser = db.prepare(`
+    SELECT s.user_id AS uid, i.name AS name, SUM(i.count) AS count
+      FROM expr_items i JOIN sessions s ON s.id = i.session_id
+     WHERE s.at >= ?
+     GROUP BY s.user_id, i.name
+     ORDER BY s.user_id, count DESC
+  `).all(since);
+
+  const topMap = {};
+  topByUser.forEach(r => {
+    const k = r.uid === null ? 0 : r.uid;
+    if (!topMap[k]) topMap[k] = { name: r.name, count: r.count };
+  });
+
+  const data = rows.map(r => ({
+    uid: r.uid,
+    username: r.username,
+    sessions: r.sessions,
+    faces: r.faces,
+    avgCost: Math.round(r.avgCost),
+    top: topMap[r.uid] ? topMap[r.uid].name : null,
+    topCount: topMap[r.uid] ? topMap[r.uid].count : 0,
+    firstAt: r.firstAt,
+    lastAt: r.lastAt
+  }));
+
+  return sendJSON(res, 200, { ok: true, days, data });
 }
 
 async function apiLogin(req, res) {
@@ -642,6 +973,19 @@ const server = http.createServer(async (req, res) => {
       if (route === 'health' && req.method === 'GET') {
         return sendJSON(res, 200, { ok: true, version: VERSION, time: Date.now() });
       }
+      if (route === 'guest-used' && req.method === 'POST') {
+        return await apiGuestUsed(req, res);
+      }
+      if (route === 'user' || route.startsWith('user/')) {
+        const sub = route.slice(5);
+        if (sub === 'register' && req.method === 'POST') return await apiRegister(req, res);
+        if (sub === 'login'    && req.method === 'POST') return await apiUserLogin(req, res);
+        if (sub === 'logout'   && req.method === 'POST') return apiUserLogout(req, res);
+        if (sub === 'me'       && req.method === 'GET')  return apiWhoami(req, res);
+      }
+      if (route === 'whoami' && req.method === 'GET') {
+        return apiWhoami(req, res);
+      }
       if (route === 'settings' && req.method === 'GET') {
         return apiGetSettings(req, res, url);
       }
@@ -672,6 +1016,14 @@ const server = http.createServer(async (req, res) => {
       if (route === 'export.csv' && req.method === 'GET') return apiExportCsv(req, res);
       if (route === 'sessions' && req.method === 'DELETE') return apiClear(req, res);
       if (route === 'password' && req.method === 'POST') return await apiChangePassword(req, res);
+
+      /* --- 用户管理（v1.7.0）--- */
+      if (route === 'users' && req.method === 'GET')    return apiAdminUsers(req, res, url);
+      if (route === 'users' && req.method === 'POST')   return await apiAdminUserCreate(req, res);
+      if (route === 'users' && req.method === 'DELETE') return apiAdminUserDelete(req, res, url);
+      if (route === 'users/status' && req.method === 'POST') return await apiAdminUserStatus(req, res);
+      if (route === 'users/detail' && req.method === 'GET')  return apiAdminUserDetail(req, res, url);
+      if (route === 'users/compare' && req.method === 'GET') return apiAdminCompare(req, res, url);
 
       return sendJSON(res, 404, { ok: false, error: 'no such api' });
     }
