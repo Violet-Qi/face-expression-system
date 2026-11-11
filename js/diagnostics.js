@@ -45,6 +45,9 @@ function collectDiagnostics() {
 
   return {
     backend,
+    presetName: (typeof currentPresetName === 'function') ? currentPresetName() : '—',
+    presetKey: (typeof activePreset !== 'undefined') ? activePreset : '—',
+    ssdReady: (typeof ssdReady !== 'undefined') ? ssdReady : false,
     modelsLoaded,
     modelsTotal: DIAG_MODELS.length,
     modelRows,
@@ -73,6 +76,7 @@ function renderDiagPanel() {
   set('diagCost', d.lastCostMs ? (d.lastCostMs + ' ms') : '还没识别过');
   set('diagFaces', d.lastFaces ? (d.lastFaces + ' 张') : '—');
   set('diagImage', d.imageSize);
+  set('diagPreset', d.presetName + (d.presetKey === 'speed' ? '' : '（SSD）'));
   set('diagDevice', d.deviceId);
   set('diagEnv', d.ua + ' · DPR ' + d.dpr);
 

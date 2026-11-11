@@ -174,10 +174,8 @@ async function analyzeVideo() {
   const step = VIDEO_SAMPLE_STEP;
   const total = estimateFrameCount(dur);
 
-  const options = new faceapi.TinyFaceDetectorOptions({
-    inputSize: INPUT_SIZE,
-    scoreThreshold: scoreThresholdNow()
-  });
+  // 检测器按档位选（速度档 tinyFaceDetector / 均衡与精度档 SSD），选项类由 buildDetectOptions 决定
+    const options = buildDetectOptions();
 
   let frameIdx = 0, faceFrames = 0, faceTotal = 0;
   const exprCount = {};

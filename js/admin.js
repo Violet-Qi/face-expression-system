@@ -397,6 +397,7 @@ async function loadUsers() {
       + '<td>' + fmtDate(u.last_login_at) + '</td>'
       + '<td>'
       +   '<button type="button" class="btn btn-mini" data-act="detail" data-id="' + u.id + '">详情</button>'
+      +   '<button type="button" class="btn btn-mini" data-act="pwd" data-id="' + u.id + '" data-name="' + esc(u.username) + '">改密</button>'
       +   '<button type="button" class="btn btn-mini" data-act="toggle" data-id="' + u.id + '" data-status="' + u.status + '">' + (u.status === 'active' ? '停用' : '启用') + '</button>'
       +   '<button type="button" class="btn btn-mini btn-danger" data-act="del" data-id="' + u.id + '" data-name="' + esc(u.username) + '">删除</button>'
       + '</td>'
@@ -482,6 +483,22 @@ document.addEventListener('click', async e => {
       msg(next === 'active' ? '已启用' : '已停用', 'ok');
       loadUsers();
     } catch (err) { msg('操作失败：' + err.message, 'err'); }
+    return;
+  }
+
+  if (act === 'pwd') {
+    const name = btn.getAttribute('data-name') || ('id=' + id);
+    const np = prompt('给「' + name + '」设置新密码（6~64 位）：\n\n留空则取消。');
+    if (np === null) return;                    // 点了取消
+    if (np.length < 6 || np.length > 64) { msg('新密码需 6~64 位', 'err'); return; }
+    try {
+      const r = await api('/api/users/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: Number(id), password: np })
+      });
+      msg('已重置「' + (r && r.username ? r.username : name) + '」的密码', 'ok');
+    } catch (err) { msg('重置失败：' + err.message, 'err'); }
     return;
   }
 

@@ -110,13 +110,11 @@ async function recognizeCurrentImage(draw) {
   }
 
   const t0 = performance.now();
-  const options = new faceapi.TinyFaceDetectorOptions({
-    inputSize: INPUT_SIZE,
-    scoreThreshold: scoreThresholdNow()
-  });
+  // 检测器按档位选（速度档 tinyFaceDetector / 均衡与精度档 SSD），选项类由 buildDetectOptions 决定
+    const options = buildDetectOptions();
   let chain = faceapi
     .detectAllFaces(resultImg, options)   // 检测所有人脸
-    .withFaceLandmarks(true)              // 定位 68 个关键点（用轻量模型）
+    .withFaceLandmarks(useTinyLandmarks())              // 定位 68 个关键点（用轻量模型）
     .withFaceExpressions();               // 逐张人脸做表情分类
   if (useGroup) chain = chain.withFaceDescriptors();   // 计算人脸特征向量（用于分组）
   const results = await chain;

@@ -40,7 +40,7 @@ const DATA_DIR  = path.join(ROOT, 'data');
 const DB_FILE   = path.join(DATA_DIR, 'app.db');
 const AUTH_FILE = path.join(DATA_DIR, 'admin.json');
 const SECRET_FILE = path.join(DATA_DIR, 'secret.json');
-const VERSION = '1.8.0';
+const VERSION = '1.8.1';
 
 const DEFAULT_ADMIN_USER = 'admin';
 const DEFAULT_ADMIN_PASS = 'admin123';   // 首次启动写入；请在管理台里改掉
@@ -193,6 +193,8 @@ const SETTING_SPEC = {
 };
 /* 主题色是字符串，单独一个白名单（v1.7.3） */
 const THEME_WHITELIST = ['default', 'sunflower', 'ocean', 'sakura'];
+/* 检测精度档位的白名单（v1.8.1）。前端存在 localStorage，也要能同步到账号。 */
+const PRESET_WHITELIST = ['speed', 'balanced', 'accurate'];
 const SETTINGS_MAX_ROWS = 20000;      // 防刷：超过就丢最旧的
 
 /* 用户登录态有效期（7 天，比管理员长——普通用户使用周期更长） */
@@ -547,6 +549,10 @@ function cleanSettingsPayload(raw) {
     const th = String(raw.theme);
     if (THEME_WHITELIST.indexOf(th) >= 0) out.theme = th;
   }
+  if (raw.detectPreset !== undefined) {
+    const ps = String(raw.detectPreset);
+    if (PRESET_WHITELIST.indexOf(ps) >= 0) out.detectPreset = ps;
+  }
   return Object.keys(out).length ? out : null;
 }
 
@@ -867,6 +873,28 @@ function apiAdminCompare(req, res, url) {
   return sendJSON(res, 200, { ok: true, days, data });
 }
 
+/** 管理员重置某个用户的密码（不需要原密码） */
+async function apiAdminUserResetPassword(req, res) {
+  let body;
+  try { body = await readBody(req); } catch (e) { return sendJSON(res, 400, { ok: false, error: 'bad json' }); }
+
+  const id = Number(body.id);
+  const newPass = String(body.password || '');
+  if (!id) return sendJSON(res, 400, { ok: false, error: 'bad id' });
+  if (newPass.length < 6 || newPass.length > 64) {
+    return sendJSON(res, 400, { ok: false, error: '新密码需 6~64 位' });
+  }
+
+  const row = db.prepare('SELECT id, username FROM users WHERE id = ?').get(id);
+  if (!row) return sendJSON(res, 404, { ok: false, error: '用户不存在' });
+
+  const h = hashPassword(newPass);
+  db.prepare('UPDATE users SET pass_hash = ? WHERE id = ?').run(h.salt + ':' + h.hash, id);
+
+  // 审计线索：只记"谁被重置了"，不记密码
+  console.log('[用户管理] 管理员重置了用户 ' + row.username + '（id=' + id + '）的密码');
+  return sendJSON(res, 200, { ok: true, username: row.username });
+}
 async function apiLogin(req, res) {
   const ip = clientIp(req);
   if (loginBlocked(ip)) return sendJSON(res, 429, { ok: false, error: 'too many attempts' });
@@ -1031,6 +1059,7 @@ const server = http.createServer(async (req, res) => {
       if (route === 'users/status' && req.method === 'POST') return await apiAdminUserStatus(req, res);
       if (route === 'users/detail' && req.method === 'GET')  return apiAdminUserDetail(req, res, url);
       if (route === 'users/compare' && req.method === 'GET') return apiAdminCompare(req, res, url);
+      if (route === 'users/password' && req.method === 'POST') return await apiAdminUserResetPassword(req, res);
 
       return sendJSON(res, 404, { ok: false, error: 'no such api' });
     }

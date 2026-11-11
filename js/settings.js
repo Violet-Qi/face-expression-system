@@ -32,7 +32,8 @@ const DEFAULT_SETTINGS = {
   detectThreshold: 0.50,     // 人脸检测阈值 0.30~0.80
   uncertainThreshold: 0.00,  // top1 低于它显示"不确定"，0 = 关闭
   cameraInterval: 400,       // 摄像头检测间隔(ms) 200~1000
-  theme: 'default'           // 主题色（字符串，不走数值夹紧）
+  theme: 'default',          // 主题色（字符串，不走数值夹紧）
+  detectPreset: 'speed'      // 检测器档位：speed / balanced / accurate
 };
 
 /** 参数范围（滑块和校验共用） */
@@ -82,6 +83,8 @@ function sanitizeSettings(raw) {
     if (k === 'theme') {
       // 主题是字符串，不能走数值夹紧，只接受白名单
       out.theme = THEMES.indexOf(String(raw.theme)) >= 0 ? String(raw.theme) : 'default';
+    } else if (k === 'detectPreset') {
+      out.detectPreset = DETECT_PRESET_KEYS.indexOf(String(raw.detectPreset)) >= 0 ? String(raw.detectPreset) : 'speed';
     } else {
       out[k] = clampSetting(k, raw[k]);
     }
@@ -286,6 +289,31 @@ function showPresetNote() {
 
 let drawerOpen = false;
 
+/**
+ * 打开设置抽屉并滚到指定分组。
+ * 用途：诊断面板和阈值实验原来埋在抽屉最下面，不给直达入口基本没人会翻到（用户反馈）。
+ */
+function openDrawerTo(sectionId) {
+  const d = document.getElementById('settingsDrawer');
+  if (!d) return;
+  if (d.hidden) setDrawer(true);
+  const target = document.getElementById(sectionId);
+  if (!target) return;
+  // 等抽屉滑入完成再滚，否则量到的位置是错的
+  setTimeout(() => {
+    const body = d.querySelector('.drawer-body');
+    if (body) {
+      const top = target.offsetTop - body.offsetTop - 8;
+      body.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    } else {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    // 高亮一下，让人知道"跳到这里了"
+    target.classList.add('is-flash');
+    setTimeout(() => target.classList.remove('is-flash'), 1200);
+  }, 300);
+}
+
 function setDrawer(open) {
   const d = document.getElementById('settingsDrawer');
   const m = document.getElementById('settingsMask');
@@ -352,8 +380,55 @@ function syncDrawerUI() {
 
   syncThemeChips();
 
+  syncPresetChips();
+
   const dirty = document.getElementById('settingsDirty');
   if (dirty) dirty.hidden = !pushPending;
+}
+
+/** 按注册表渲染档位卡片（加模型只改 model-registry.js，这里不用动） */
+function renderPresetChips() {
+  const row = document.getElementById('presetRow');
+  if (!row || typeof MODEL_REGISTRY === 'undefined') return;
+  row.innerHTML = MODEL_REGISTRY.map(p =>
+    '<button type="button" class="preset-chip" data-preset="' + p.key + '">' +
+      '<b>' + p.name + '</b>' +
+      '<span>' + (p.detectNet === 'tinyFaceDetector' ? 'Tiny 检测器' : 'SSD 检测器') +
+        ' · ' + (p.extraMB ? '+' + p.extraMB + ' MB' : '已内置') + '</span>' +
+      '<em>' + (p.extraMB ? p.desc.split('；')[0] + ' · ' : '') + p.speedHint + '</em>' +
+    '</button>'
+  ).join('');
+  bindPresetChips();
+  syncPresetChips();
+}
+
+/** 检测器档位：更新选中态 */
+function syncPresetChips() {
+  const cur = curSettings().detectPreset;
+  document.querySelectorAll('.preset-chip').forEach(btn => {
+    btn.classList.toggle('is-active', btn.getAttribute('data-preset') === cur);
+  });
+}
+
+/** 绑定档位卡片的点击 */
+function bindPresetChips() {
+  document.querySelectorAll('.preset-chip').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const key = btn.getAttribute('data-preset');
+      if (key === curSettings().detectPreset) return;
+
+      document.querySelectorAll('.preset-chip').forEach(b => b.classList.add('is-busy'));
+      const r = await applyDetectPreset(key);
+      document.querySelectorAll('.preset-chip').forEach(b => b.classList.remove('is-busy'));
+
+      if (!r.ok) { syncPresetChips(); return; }
+      const next = Object.assign({}, activeSettings);
+      next.detectPreset = key;
+      applySettings(next);
+      pushRemoteSettings();
+      if (typeof renderDiagPanel === 'function') renderDiagPanel();
+    });
+  });
 }
 
 /** 主题切换器：更新选中态 */
@@ -388,6 +463,7 @@ function toastInDrawer(msg) {
 }
 
 function initSettingsUI() {
+  renderPresetChips();
   const btn = document.getElementById('settingsBtn');
   const close = document.getElementById('settingsClose');
   const mask = document.getElementById('settingsMask');
@@ -427,6 +503,14 @@ function initSettingsUI() {
       pushRemoteSettings();
     });
   });
+
+  // 三个直达入口：页头「分析」→ 诊断；表情信息区「阈值对比实验」→ 实验；设置 → 顶部
+  const analyzeBtn = document.getElementById('analyzeBtn');
+  if (analyzeBtn) analyzeBtn.addEventListener('click', () => openDrawerTo('diagSection'));
+
+  const infoExpBtn = document.getElementById('infoExpBtn');
+  if (infoExpBtn) infoExpBtn.addEventListener('click', () => openDrawerTo('expSection'));
+
 
   const copyBtn = document.getElementById('copyLinkBtn');
   if (copyBtn) copyBtn.addEventListener('click', copyShareLink);

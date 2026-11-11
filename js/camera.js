@@ -135,10 +135,8 @@ async function detectCameraFrame() {
   if (!vw || !vh) return;
 
   // 摄像头模式不需要关键点，少跑一个模型，速度更快
-  const options = new faceapi.TinyFaceDetectorOptions({
-    inputSize: INPUT_SIZE,
-    scoreThreshold: scoreThresholdNow()
-  });
+  // 检测器按档位选（速度档 tinyFaceDetector / 均衡与精度档 SSD），选项类由 buildDetectOptions 决定
+    const options = buildDetectOptions();
   const results = await faceapi
     .detectAllFaces(video, options)
     .withFaceExpressions();

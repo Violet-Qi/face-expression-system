@@ -56,6 +56,101 @@ async function retryInitModels() {
   await initModels();
 }
 
+/* ---------------- 检测器档位（v1.8.1）---------------- */
+
+/** 当前该用哪个检测器 */
+function currentDetectNet() {
+  const p = DETECT_PRESETS[activePreset] || DETECT_PRESETS.speed;
+  return p.detectNet;
+}
+
+/** 当前档位是否用完整 68 点关键点模型（false = 用 tiny 版） */
+function useTinyLandmarks() {
+  const p = DETECT_PRESETS[activePreset] || DETECT_PRESETS.speed;
+  return p.landmarkNet !== 'faceLandmark68Net';
+}
+
+/** 按档位生成检测选项。两种检测器的选项类不同，不能混用。 */
+function buildDetectOptions(threshold) {
+  const th = (typeof threshold === 'number') ? threshold : scoreThresholdNow();
+  if (currentDetectNet() === 'ssdMobilenetv1') {
+    // SSD 用 minConfidence，没有 inputSize（内部固定 512）
+    return new faceapi.SsdMobilenetv1Options({ minConfidence: th });
+  }
+  return new faceapi.TinyFaceDetectorOptions({ inputSize: INPUT_SIZE, scoreThreshold: th });
+}
+
+/**
+ * 切换到指定档位。
+ * SSD 是懒加载的：第一次切到 balanced 才去下 5.5 MB，之后走缓存。
+ * 返回 { ok, error? }
+ */
+/**
+ * 切换到指定档位。
+ * 加载哪些网络完全由注册表的 nets 字段决定 —— 加模型不用改这里。
+ */
+async function applyDetectPreset(key, opts) {
+  const target = DETECT_PRESETS[key] ? key : DEFAULT_PRESET_KEY;
+  const o = opts || {};
+  const preset = DETECT_PRESETS[target];
+
+  // 这一档还缺哪些网络？(已内置的不算)
+  const need = (preset.nets || []).filter(n => !netLoaded(n));
+
+  for (const netName of need) {
+    const net = faceapi.nets[netName];
+    if (!net) {
+      const msg = '未知模型：' + netName + '（请检查 model-registry.js 的 nets 字段）';
+      console.error('[档位切换]', msg);
+      if (o.silent !== true) setStatus(msg, 'error');
+      return { ok: false, error: msg };
+    }
+    if (o.silent !== true) {
+      const mb = NET_SIZE_MB[netName] ? ('，约 ' + NET_SIZE_MB[netName] + ' MB') : '';
+      setStatus('正在加载「' + preset.name + '」所需的模型' + mb + '…', 'loading');
+    }
+    try {
+      await net.loadFromUri(MODEL_URL);
+    } catch (err) {
+      console.error('[模型加载失败] ' + netName, err);
+      if (o.silent !== true) {
+        setStatus('模型「' + netName + '」加载失败：' + err.message + '。已回退到速度优先。', 'error');
+      }
+      activePreset = DEFAULT_PRESET_KEY;
+      return { ok: false, error: err.message };
+    }
+  }
+
+  activePreset = target;
+  if (o.silent !== true) {
+    setStatus('检测精度已切换为「' + preset.name + '」。' + preset.desc, 'ok');
+  }
+  return { ok: true };
+}
+
+/** 某个 net 是否已加载 */
+function netLoaded(name) {
+  const net = faceapi.nets[name];
+  return !!(net && net.isLoaded);
+}
+
+/** 各模型的体积（只为提示文案，不影响逻辑） */
+const NET_SIZE_MB = {
+  tinyFaceDetector: 0.2,
+  ssdMobilenetv1: 5.5,
+  faceLandmark68TinyNet: 0.1,
+  faceLandmark68Net: 0.35,
+  faceExpressionNet: 0.3,
+  faceRecognitionNet: 6.1
+};
+
+
+/** 档位的中文名，给诊断面板用 */
+function currentPresetName() {
+  const p = DETECT_PRESETS[activePreset] || DETECT_PRESETS.speed;
+  return p.name;
+}
+
 async function initModels() {
   if (modelsInitStarted) return;
   modelsInitStarted = true;
@@ -72,6 +167,13 @@ async function initModels() {
       faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL)      // 表情分类
     ]);
     modelsReady = true;
+    /* 如果上次选的是"均衡"档，启动时就把 SSD 也加载上
+       （不静默：让用户看到"正在加载高精度模型"） */
+    try {
+      const want = (typeof curSettings === 'function' && curSettings().detectPreset) || 'speed';
+      if (want !== 'speed' && DETECT_PRESETS[want]) await applyDetectPreset(want, { silent: false });
+      else activePreset = 'speed';
+    } catch (e) { activePreset = 'speed'; }
     const sec = ((performance.now() - t0) / 1000).toFixed(1);
     setStatus(`模型加载完成（耗时 ${sec} 秒），请选择图片或开启摄像头。`, 'ok');
     // 通知封面解封「开始体验」按钮（函数在 main.js 里，保持分层）

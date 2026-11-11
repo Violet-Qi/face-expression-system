@@ -1063,29 +1063,29 @@ body {
 
 :root {
   --ease-out:  cubic-bezier(.22, 1, .36, 1);   /* 前快后缓：飞入 */
-  --ease-back: cubic-bezier(.34, 1.56, .64, 1); /* 带过冲：弹出 */
+  --ease-back: cubic-bezier(.34, 1.08, .64, 1); /* 轻微过冲：只做「到位感」，不做弹跳 */
   --ease-in:   cubic-bezier(.4, 0, 1, 1);      /* 后快：飞出 */
   --dur-fast:  140ms;
-  --dur:       320ms;
+  --dur:       240ms;
   --dur-out:   160ms;
 }
 
 /* ---------------- 关键帧 ---------------- */
-@keyframes fxInLeft  { from { opacity:0; transform: translateX(-100%) scale(.96); } to { opacity:1; transform: none; } }
-@keyframes fxInRight { from { opacity:0; transform: translateX(100%)  scale(.96); } to { opacity:1; transform: none; } }
-@keyframes fxInUp    { from { opacity:0; transform: translateY(90px)  scale(.97); } to { opacity:1; transform: none; } }
-@keyframes fxInDown  { from { opacity:0; transform: translateY(-56px) scale(.97); } to { opacity:1; transform: none; } }
+@keyframes fxInLeft  { from { opacity:0; transform: translateX(-100%) scale(.99); } to { opacity:1; transform: none; } }
+@keyframes fxInRight { from { opacity:0; transform: translateX(100%)  scale(.99); } to { opacity:1; transform: none; } }
+@keyframes fxInUp    { from { opacity:0; transform: translateY(28px)  scale(.99); } to { opacity:1; transform: none; } }
+@keyframes fxInDown  { from { opacity:0; transform: translateY(-20px) scale(.99); } to { opacity:1; transform: none; } }
 @keyframes fxPop     { from { opacity:0; transform: scale(.88); }                 to { opacity:1; transform: none; } }
 @keyframes fxFadeIn  { from { opacity:0; }                                        to { opacity:1; } }
 
 /* v1.7.1 新增：真·从屏幕外飞入（用于封面和弹窗，位移量更大） */
-@keyframes fxFlyLeft   { from { opacity:0; transform: translateX(-120vw) scale(.94); } to { opacity:1; transform: none; } }
-@keyframes fxFlyRight  { from { opacity:0; transform: translateX(120vw)  scale(.94); } to { opacity:1; transform: none; } }
-@keyframes fxFlyUp     { from { opacity:0; transform: translateY(120vh)  scale(.94); } to { opacity:1; transform: none; } }
-@keyframes fxFlyDown   { from { opacity:0; transform: translateY(-120vh) scale(.94); } to { opacity:1; transform: none; } }
+@keyframes fxFlyLeft   { from { opacity:0; transform: translateX(-40vw) scale(.985); } to { opacity:1; transform: none; } }
+@keyframes fxFlyRight  { from { opacity:0; transform: translateX(40vw)  scale(.985); } to { opacity:1; transform: none; } }
+@keyframes fxFlyUp     { from { opacity:0; transform: translateY(40vh)  scale(.985); } to { opacity:1; transform: none; } }
+@keyframes fxFlyDown   { from { opacity:0; transform: translateY(-40vh) scale(.985); } to { opacity:1; transform: none; } }
 
 /* 弹窗从下方带过冲弹出 */
-@keyframes fxPopUp     { from { opacity:0; transform: translate(-50%, -46%) scale(.94); } to { opacity:1; transform: translate(-50%, -50%) scale(1); } }
+@keyframes fxPopUp     { from { opacity:0; transform: translate(-50%, -47%) scale(.985); } to { opacity:1; transform: translate(-50%, -50%) scale(1); } }
 /* 抽屉从右侧滑入 */
 @keyframes fxSlideIn   { from { opacity:.4; transform: translateX(40px); } to { opacity:1; transform: none; } }
 
@@ -1095,9 +1095,9 @@ body {
   to   { opacity: 1; transform: translate(-50%, 0)   scale(1); }
 }
 
-@keyframes fxOutLeft  { from { opacity:1; transform: none; } to { opacity:0; transform: translateX(-64px) scale(.96); } }
-@keyframes fxOutRight { from { opacity:1; transform: none; } to { opacity:0; transform: translateX(64px)  scale(.96); } }
-@keyframes fxOutDown  { from { opacity:1; transform: none; } to { opacity:0; transform: translateY(40px)  scale(.97); } }
+@keyframes fxOutLeft  { from { opacity:1; transform: none; } to { opacity:0; transform: translateX(-64px) scale(.99); } }
+@keyframes fxOutRight { from { opacity:1; transform: none; } to { opacity:0; transform: translateX(64px)  scale(.99); } }
+@keyframes fxOutDown  { from { opacity:1; transform: none; } to { opacity:0; transform: translateY(40px)  scale(.99); } }
 
 /* ============================================================
    一、入场（首屏 + 切换模式重播，都走 body.fx-anim）
@@ -1125,7 +1125,7 @@ body.fx-anim .page:not([hidden]) .panel:not(#leftPanel) {
 
 /* 下方模块从下往上 */
 body.fx-anim .group-box  { animation: fxInUp var(--dur) var(--ease-out) both; animation-delay: 190ms; }
-body.fx-anim .stats-box  { animation: fxInUp var(--dur) var(--ease-out) both; animation-delay: 230ms; }
+body.fx-anim .stats-box  { animation: fxInUp var(--dur) var(--ease-out) both; animation-delay: 160ms; }
 body.fx-anim .trend-box  { animation: fxInUp var(--dur) var(--ease-out) both; animation-delay: 270ms; }
 body.fx-anim .video-bar,
 body.fx-anim .video-stats,
@@ -1148,7 +1148,7 @@ body.fx-anim .page-header h1 {
 }
 body.fx-anim .page-header .subtitle {
   animation: fxInDown var(--dur) var(--ease-out) both;
-  animation-delay: 90ms;
+  animation-delay: 60ms;
 }
 body.fx-anim #sourceImg,
 body.fx-anim #resultImg,
@@ -1230,9 +1230,9 @@ button:not(:disabled):active,
 @media (hover: hover) and (pointer: fine) {
   button:not(:disabled):hover,
   .btn:not(:disabled):hover,
-  .btn-ghost:not(:disabled):hover { transform: translateY(-2px); }
+  .btn-ghost:not(:disabled):hover { transform: translateY(-1px); }
   #detectBtn:not(:disabled):hover {
-    transform: translateY(-3px);
+    transform: translateY(-1px);
     box-shadow: 0 10px 26px rgba(255, 122, 26, .38);
   }
   .mode-btn:not(.is-active):hover { transform: translateY(-1px); }
@@ -1410,11 +1410,11 @@ tbody tr { transition: background-color var(--dur-fast) var(--ease-out); }
   color: var(--text-muted);
   font-size: 13px;
   box-shadow: var(--shadow);
-  animation: fxPop 340ms var(--ease-back) both;
+  animation: fxPop 260ms var(--ease-back) both;
 }
 .cover-chip:nth-child(1) { animation-delay:  60ms; }
 .cover-chip:nth-child(2) { animation-delay: 110ms; }
-.cover-chip:nth-child(3) { animation-delay: 160ms; }
+.cover-chip:nth-child(3) { animation-delay: 110ms; }
 .cover-chip:nth-child(4) { animation-delay: 210ms; }
 .cover-chip:nth-child(5) { animation-delay: 260ms; }
 
@@ -1449,7 +1449,7 @@ tbody tr { transition: background-color var(--dur-fast) var(--ease-out); }
   box-shadow: none;
 }
 .cover-start:not(:disabled):hover {
-  transform: translateY(-2px);
+  transform: translateY(-1px);
   box-shadow: 0 14px 30px rgba(255, 122, 26, .42);
 }
 .cover-start:not(:disabled):active {
@@ -1924,15 +1924,15 @@ body.cover-open {
 }
 
 /* 四色：橙 → 玫红 → 紫 → 蓝，同一色系里跳色，不花 */
-.brand .ch1 { background-image: linear-gradient(160deg, #ffb347, #ff7a1a); transform: rotate(-3deg); }
-.brand .ch2 { background-image: linear-gradient(160deg, #ff8fa3, #e8407a); transform: rotate(2deg); }
-.brand .ch3 { background-image: linear-gradient(160deg, #b38bff, #7c4dff); transform: rotate(-2deg); }
-.brand .ch4 { background-image: linear-gradient(160deg, #6ec8ff, #1e88e5); transform: rotate(3deg); }
+.brand .ch1 { background-image: linear-gradient(160deg, #ffb347, #ff7a1a); transform: none; }
+.brand .ch2 { background-image: linear-gradient(160deg, #ff8fa3, #e8407a); transform: none; }
+.brand .ch3 { background-image: linear-gradient(160deg, #b38bff, #7c4dff); transform: none; }
+.brand .ch4 { background-image: linear-gradient(160deg, #6ec8ff, #1e88e5); transform: none; }
 
-.brand:hover .ch1 { transform: rotate(-3deg) translateY(-2px); }
-.brand:hover .ch2 { transform: rotate(2deg)  translateY(-3px); }
-.brand:hover .ch3 { transform: rotate(-2deg) translateY(-2px); }
-.brand:hover .ch4 { transform: rotate(3deg)  translateY(-3px); }
+.brand:hover .ch1 { transform: translateY(-1px); }
+.brand:hover .ch2 { transform: translateY(-1px); }
+.brand:hover .ch3 { transform: translateY(-1px); }
+.brand:hover .ch4 { transform: translateY(-1px); }
 
 /* 不支持 background-clip:text 时退回单色，不能变成看不见的字 */
 @supports not ((-webkit-background-clip: text) or (background-clip: text)) {
@@ -1973,7 +1973,7 @@ body.cover-open {
   z-index: 950;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -46%) scale(.97);
+  transform: translate(-50%, -46%) scale(.99);
   width: 380px;
   max-width: 92vw;
   max-height: 86vh;
@@ -2087,7 +2087,7 @@ body.cover-open {
   .auth-panel { width: 100%; max-width: 100%; max-height: 92vh; border-radius: 16px 16px 0 0; top: auto; bottom: 0; transform: translate(-50%, 3%) scale(.99); }
   .auth-panel.is-open {
     transform: translate(-50%, 0);
-    animation: fxPopUpSheet 380ms var(--ease-back) both;
+    animation: fxPopUpSheet 300ms var(--ease-back) both;
   }
 }
 .page-footer .foot-links { display: block; margin-top: 5px; font-size: 11.5px; }
@@ -2287,37 +2287,37 @@ body.cover-open {
 
 /* ---------- 一、封面：logo 从上方砸下来，四个字左右交替飞入 ---------- */
 .cover:not(.is-gone):not(.is-leaving) .cover-logo {
-  animation: fxFlyDown 620ms var(--ease-out) both;
+  animation: fxFlyDown 440ms var(--ease-out) both;
 }
 .cover:not(.is-gone):not(.is-leaving) .cover-title .ch1 {
-  animation: fxFlyLeft 640ms var(--ease-back) both; animation-delay: 90ms;
+  animation: fxFlyLeft 420ms var(--ease-back) both; animation-delay: 60ms;
 }
 .cover:not(.is-gone):not(.is-leaving) .cover-title .ch2 {
-  animation: fxFlyUp 660ms var(--ease-back) both; animation-delay: 160ms;
+  animation: fxFlyUp 420ms var(--ease-back) both; animation-delay: 110ms;
 }
 .cover:not(.is-gone):not(.is-leaving) .cover-title .ch3 {
-  animation: fxFlyDown 660ms var(--ease-back) both; animation-delay: 230ms;
+  animation: fxFlyDown 420ms var(--ease-back) both; animation-delay: 160ms;
 }
 .cover:not(.is-gone):not(.is-leaving) .cover-title .ch4 {
-  animation: fxFlyRight 640ms var(--ease-back) both; animation-delay: 300ms;
+  animation: fxFlyRight 420ms var(--ease-back) both; animation-delay: 210ms;
 }
 .cover:not(.is-gone):not(.is-leaving) .cover-sub {
-  animation: fxInUp 520ms var(--ease-out) both; animation-delay: 380ms;
+  animation: fxInUp 340ms var(--ease-out) both; animation-delay: 260ms;
 }
 .cover:not(.is-gone):not(.is-leaving) .cover-desc {
-  animation: fxInUp 520ms var(--ease-out) both; animation-delay: 440ms;
+  animation: fxInUp 340ms var(--ease-out) both; animation-delay: 300ms;
 }
 .cover:not(.is-gone):not(.is-leaving) .cover-chips {
-  animation: fxInUp 520ms var(--ease-out) both; animation-delay: 500ms;
+  animation: fxInUp 340ms var(--ease-out) both; animation-delay: 340ms;
 }
 .cover:not(.is-gone):not(.is-leaving) .cover-status {
-  animation: fxFadeIn 420ms var(--ease-out) both; animation-delay: 560ms;
+  animation: fxFadeIn 300ms var(--ease-out) both; animation-delay: 370ms;
 }
 .cover:not(.is-gone):not(.is-leaving) .cover-start {
-  animation: fxFlyUp 600ms var(--ease-back) both; animation-delay: 620ms;
+  animation: fxFlyUp 440ms var(--ease-back) both; animation-delay: 400ms;
 }
 .cover:not(.is-gone):not(.is-leaving) .cover-hint {
-  animation: fxFadeIn 460ms var(--ease-out) both; animation-delay: 760ms;
+  animation: fxFadeIn 320ms var(--ease-out) both; animation-delay: 450ms;
 }
 
 /* ---------- 二、登录/注册弹窗：从下方带过冲弹出，字段逐个跟上 ---------- */
@@ -2325,15 +2325,15 @@ body.cover-open {
   /* ⚠️ 关键帧里必须自己带上 translate(-50%,-50%)：
      弹窗的居中靠 transform，而动画的 to 会把 transform 整体覆盖掉，
      写成 transform:none 就会把弹窗甩到右下（实测偏 183px / 144px）。 */
-  animation: fxPopUp 380ms var(--ease-back) both;
+  animation: fxPopUp 300ms var(--ease-back) both;
 }
 .auth-panel.is-open .auth-head { animation: fxFadeIn 300ms var(--ease-out) both; animation-delay: 60ms; }
-.auth-panel.is-open .auth-field { animation: fxInUp 360ms var(--ease-out) both; }
-.auth-panel.is-open .auth-field:nth-of-type(1) { animation-delay: 90ms; }
+.auth-panel.is-open .auth-field { animation: fxInUp 280ms var(--ease-out) both; }
+.auth-panel.is-open .auth-field:nth-of-type(1) { animation-delay: 60ms; }
 .auth-panel.is-open .auth-field:nth-of-type(2) { animation-delay: 150ms; }
 .auth-panel.is-open .auth-field:nth-of-type(3) { animation-delay: 210ms; }
 .auth-panel.is-open .auth-agree  { animation: fxFadeIn 320ms var(--ease-out) both; animation-delay: 260ms; }
-.auth-panel.is-open .auth-submit { animation: fxInUp 380ms var(--ease-back) both; animation-delay: 300ms; }
+.auth-panel.is-open .auth-submit { animation: fxInUp 380ms var(--ease-back) both; animation-delay: 210ms; }
 
 /* ---------- 三、用户协议展开：从收起变成展开，而不是"啪"地出现 ---------- */
 .auth-agreement:not([hidden]),
@@ -2348,7 +2348,7 @@ body.cover-open {
 
 /* ---------- 四、设置抽屉：滑入 + 内容错峰 ---------- */
 .drawer.is-open .set-group {
-  animation: fxInUp 360ms var(--ease-out) both;
+  animation: fxInUp 280ms var(--ease-out) both;
 }
 .drawer.is-open .set-group:nth-of-type(1) { animation-delay: 60ms; }
 .drawer.is-open .set-group:nth-of-type(2) { animation-delay: 130ms; }
@@ -2356,7 +2356,7 @@ body.cover-open {
 
 /* ---------- 五、顶部提示条 / 遮罩 ---------- */
 .preset-note {
-  animation: fxInDown 420ms var(--ease-back) both;
+  animation: fxInDown 300ms var(--ease-back) both;
 }
 .drawer-mask.is-open { animation: fxFadeIn 220ms var(--ease-out) both; }
 
@@ -2389,23 +2389,23 @@ body.cover-open {
    ============================================================ */
 
 @keyframes fxRiseUp {
-  from { opacity: 0; transform: translateY(60vh) scale(.96); }
+  from { opacity: 0; transform: translateY(24vh) scale(.99); }
   to   { opacity: 1; transform: none; }
 }
 
 /* ---------- 两个白框：从左右屏幕外飞入（480ms，比原来更慢更明显）---------- */
 body.fx-anim #leftPanel {
-  animation: fxFlyLeft 480ms var(--ease-out) both;
+  animation: fxFlyLeft 340ms var(--ease-out) both;
 }
 body.fx-anim .page:not([hidden]) .panel:not(#leftPanel) {
-  animation: fxFlyRight 480ms var(--ease-out) both;
+  animation: fxFlyRight 340ms var(--ease-out) both;
   animation-delay: 60ms;
 }
 body.fx-switch .page:not([hidden]) #leftPanel {
-  animation: fxFlyLeft 380ms var(--ease-out) both;
+  animation: fxFlyLeft 300ms var(--ease-out) both;
 }
 body.fx-switch .page:not([hidden]) .panel:not(#leftPanel) {
-  animation: fxFlyRight 380ms var(--ease-out) both;
+  animation: fxFlyRight 300ms var(--ease-out) both;
   animation-delay: 50ms;
 }
 
@@ -2413,19 +2413,19 @@ body.fx-switch .page:not([hidden]) .panel:not(#leftPanel) {
 /* ⚠️ 不能用 :nth-of-type —— 它按"同类型兄弟"计数，这两个 div 前面还有别的 div，
    会一个都匹配不上（我第一版就是这么写错的）。用相邻兄弟选择器最稳。 */
 body.fx-anim .mask-opt {
-  animation: fxRiseUp 520ms var(--ease-out) both;
+  animation: fxRiseUp 360ms var(--ease-out) both;
   animation-delay: 260ms;
 }
 body.fx-anim .mask-opt + .mask-opt {
-  animation-delay: 350ms;
+  animation-delay: 240ms;
 }
 body.fx-anim #detectBtn {
-  animation: fxRiseUp 560ms var(--ease-back) both;
-  animation-delay: 420ms;
+  animation: fxRiseUp 380ms var(--ease-back) both;
+  animation-delay: 280ms;
 }
 body.fx-anim .page-footer {
-  animation: fxFadeIn 460ms var(--ease-out) both;
-  animation-delay: 540ms;
+  animation: fxFadeIn 320ms var(--ease-out) both;
+  animation-delay: 320ms;
 }
 
 /* 切换模式时按钮不重播（否则每切一次页面按钮都飞一遍，很烦） */
@@ -2456,7 +2456,7 @@ body.fx-anim .page-footer {
   }
   .auth-panel.is-open {
     transform: translate(-50%, 0);
-    animation: fxPopUpSheet 380ms var(--ease-back) both;
+    animation: fxPopUpSheet 300ms var(--ease-back) both;
   }
 }
 /* ============================================================
@@ -2777,4 +2777,116 @@ html[data-theme="sakura"] .fx-shape {
   .diag-grid { grid-template-columns: 1fr; }
   .exp-table { font-size: 11.5px; }
   .exp-table th, .exp-table td { padding: 5px 5px; }
+}
+
+/* ============================================================
+   直达入口（v1.8.0 补）—— 诊断面板与阈值实验原来埋在抽屉最底部，
+   不点开设置再往下滚根本看不到。加三个入口 + 跳转高亮。
+   ============================================================ */
+
+.analyze-btn {
+  color: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+}
+.analyze-btn:hover {
+  color: var(--primary-hover);
+  border-color: var(--primary);
+  background: var(--tint);
+}
+
+/* 表情信息标题右侧的内联入口 */
+.info-title .info-exp-link {
+  margin-left: auto;
+  padding: 2px 9px;
+  font-size: 11.5px;
+  font-family: inherit;
+  font-weight: 400;
+  color: var(--primary);
+  background: transparent;
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.info-title .info-exp-link:hover { background: var(--tint); }
+
+/* 跳转后的高亮，让人知道"跳到这儿了" */
+.set-group.is-flash {
+  animation: flashSection 1200ms var(--ease-out);
+  border-radius: 10px;
+}
+@keyframes flashSection {
+  0%   { background: transparent; box-shadow: none; }
+  18%  { background: var(--tint); box-shadow: 0 0 0 6px var(--tint); }
+  100% { background: transparent; box-shadow: none; }
+}
+
+@media (max-width: 760px) {
+  .analyze-btn-txt { display: none; }
+  .analyze-btn { padding: 6px 9px; }
+  .info-title .info-exp-link { font-size: 11px; padding: 2px 7px; }
+}
+/* ============================================================
+   检测精度档位（v1.8.1）
+   ============================================================ */
+
+.preset-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preset-chip {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+  align-items: baseline;
+  padding: 10px 12px;
+  text-align: left;
+  font-family: inherit;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out),
+              background var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+}
+.preset-chip:hover { transform: translateY(-1px); border-color: var(--border-strong); }
+.preset-chip.is-active {
+  border-color: var(--primary);
+  background: var(--tint);
+}
+.preset-chip.is-busy { opacity: .55; pointer-events: none; }
+
+.preset-chip b {
+  grid-column: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.preset-chip span {
+  grid-column: 1;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+.preset-chip em {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  opacity: .85;
+}
+.preset-chip.is-active em { color: var(--primary); opacity: 1; }
+.preset-chip.is-active b::after {
+  content: ' ✓';
+  color: var(--primary);
+}
+
+@media (max-width: 760px) {
+  .preset-chip { grid-template-columns: 1fr; }
+  .preset-chip em { grid-column: 1; grid-row: auto; }
 }

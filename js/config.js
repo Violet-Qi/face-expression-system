@@ -30,6 +30,18 @@ const MAX_FILE_MB = 10;           // 上传大小上限
    实测 512 会让 tinyFaceDetector 一张脸都检测不到（face-api 的已知坑），
    416 是该模型的默认值，也是唯一稳定的选择。 */
 const INPUT_SIZE  = 416;
+
+/* ---------------- 检测器档位（v1.8.1）----------------
+   face-api 提供两种人脸检测器，能力与开销差很多：
+
+     tinyFaceDetector   189 KB，快（单帧 13~50ms），小脸/侧脸容易漏
+     ssdMobilenetv1     5.5 MB，慢 4~8 倍，但检出率明显更高
+
+   档位只影响"检不检得到脸"，**不影响表情分类准确率** ——
+   表情模型只有一个（faceExpressionNet），没得换。
+   所以这里叫"检测精度"，不叫"准确率"。
+
+   模型按需加载：选速度档的人不会为 5.5 MB 买单。 */
 const SCORE_TH    = 0.50;         // 置信度阈值，低于此值不算人脸
 const SAMPLE_URL  = 'samples/test-face.jpg';  // 示例图片
 
@@ -116,7 +128,14 @@ let photosData = [];
 let galleryData = null;
 let busy         = false;   // 图片模式是否正在识别，防重复点击
 let lastResults  = null;    // 最近一次识别结果，窗口缩放后用它重画
-let lastInfoCostMs = 0;     // 最近一次识别耗时，切换分组开关后重绘信息区要用
+let lastInfoCostMs = 0;
+
+/* 当前生效的检测器（'speed' | 'balanced'）。由 models.js 与 settings.js 共同维护 */
+let activePreset = 'speed';
+/** SSD 检测网络是否已加载完成 */
+let ssdReady = false;
+/** 完整 68 点关键点模型是否已加载（精度优先档需要） */
+let fullLandmarkReady = false;     // 最近一次识别耗时，切换分组开关后重绘信息区要用
 
 let mode         = 'image'; // 当前模式：'image' | 'camera'
 let cameraStream = null;    // 摄像头媒体流
