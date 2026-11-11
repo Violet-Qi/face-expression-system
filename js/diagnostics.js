@@ -207,9 +207,8 @@ function initDiagnosticsUI() {
     if (lastExperiment) renderExperiment(lastExperiment);
   });
 
-  // 展开设置抽屉时自动刷新一次诊断
-  const settingsBtn = document.getElementById('settingsBtn');
-  if (settingsBtn) settingsBtn.addEventListener('click', () => setTimeout(renderDiagPanel, 320));
+  /* 诊断面板现在在「分析」弹层里，打开时由 settings.js 的 openAnaModal() 调用刷新，
+     所以这里不再监听设置按钮（那是它还嵌在设置抽屉里时的写法）。 */
 }
 
 let lastExperiment = null;

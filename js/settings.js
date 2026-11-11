@@ -386,28 +386,126 @@ function syncDrawerUI() {
   if (dirty) dirty.hidden = !pushPending;
 }
 
-/** 按注册表渲染档位卡片（加模型只改 model-registry.js，这里不用动） */
+/** 按注册表渲染档位列表（弹层里用） */
 function renderPresetChips() {
-  const row = document.getElementById('presetRow');
-  if (!row || typeof MODEL_REGISTRY === 'undefined') return;
-  row.innerHTML = MODEL_REGISTRY.map(p =>
+  const box = document.getElementById('presetList');
+  if (!box || typeof MODEL_REGISTRY === 'undefined') return;
+
+  box.innerHTML = MODEL_REGISTRY.map(p =>
     '<button type="button" class="preset-chip" data-preset="' + p.key + '">' +
       '<b>' + p.name + '</b>' +
-      '<span>' + (p.detectNet === 'tinyFaceDetector' ? 'Tiny 检测器' : 'SSD 检测器') +
-        ' · ' + (p.extraMB ? '+' + p.extraMB + ' MB' : '已内置') + '</span>' +
-      '<em>' + (p.extraMB ? p.desc.split('；')[0] + ' · ' : '') + p.speedHint + '</em>' +
+      '<span class="preset-sub">' + p.desc + '</span>' +
+      '<span class="preset-meta">' +
+        (p.detectNet === 'tinyFaceDetector' ? 'Tiny 检测器' : 'SSD 检测器') +
+        ' · ' + (p.extraMB ? '首次需下载 ' + p.extraMB + ' MB' : '已内置，无需下载') +
+        ' · ' + p.speedHint +
+      '</span>' +
     '</button>'
   ).join('');
+
   bindPresetChips();
   syncPresetChips();
 }
 
+/** 打开分析弹层（tab: 'diag' | 'exp'） */
+function openAnaModal(tab) {
+  const mask = document.getElementById('anaMask');
+  const modal = document.getElementById('anaModal');
+  if (!mask || !modal) return;
+  mask.hidden = false;
+  modal.hidden = false;
+  requestAnimationFrame(() => { mask.classList.add('is-open'); modal.classList.add('is-open'); });
+  modal.setAttribute('aria-hidden', 'false');
+  setAnaTab(tab || 'diag');
+  if (typeof lockPageScroll === 'function') lockPageScroll(true);
+  if (typeof renderDiagPanel === 'function') renderDiagPanel();
+}
+
+function closeAnaModal() {
+  const mask = document.getElementById('anaMask');
+  const modal = document.getElementById('anaModal');
+  if (!mask || !modal || modal.hidden) return;
+  modal.classList.remove('is-open');
+  mask.classList.remove('is-open');
+  modal.classList.add('is-closing');
+  mask.classList.add('is-closing');
+  const done = () => {
+    modal.classList.remove('is-closing');
+    mask.classList.remove('is-closing');
+    modal.hidden = true;
+    mask.hidden = true;
+    modal.setAttribute('aria-hidden', 'true');
+    // 其它弹层可能还开着，全部关掉才解锁
+    const presetOpen = document.getElementById('presetModal') && !document.getElementById('presetModal').hidden;
+    const authOpen = document.getElementById('authPanel') && !document.getElementById('authPanel').hidden;
+    if (!presetOpen && !authOpen && typeof lockPageScroll === 'function') lockPageScroll(false);
+  };
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) done(); else setTimeout(done, 200);
+}
+
+function setAnaTab(which) {
+  const isDiag = which !== 'exp';
+  const d = document.getElementById('anaDiag');
+  const e = document.getElementById('anaExp');
+  const td = document.getElementById('tabDiag');
+  const te = document.getElementById('tabExp');
+  if (d) d.hidden = !isDiag;
+  if (e) e.hidden = isDiag;
+  if (td) td.classList.toggle('is-active', isDiag);
+  if (te) te.classList.toggle('is-active', !isDiag);
+}
+
+/** 打开档位弹层 */
+function openPresetModal() {
+  const mask = document.getElementById('presetMask');
+  const modal = document.getElementById('presetModal');
+  if (!mask || !modal) return;
+  mask.hidden = false;
+  modal.hidden = false;
+  requestAnimationFrame(() => { mask.classList.add('is-open'); modal.classList.add('is-open'); });
+  modal.setAttribute('aria-hidden', 'false');
+  /* 锁背景滚动：不锁的话页面滚动条还在，fixed 居中会偏「半个滚动条宽度」
+     （实测 1280 宽偏 7px）。auth.js 里已有 lockPageScroll，直接复用。 */
+  if (typeof lockPageScroll === 'function') lockPageScroll(true);
+  syncPresetChips();
+}
+
+/** 关闭档位弹层 */
+function closePresetModal() {
+  const mask = document.getElementById('presetMask');
+  const modal = document.getElementById('presetModal');
+  if (!mask || !modal || modal.hidden) return;
+  modal.classList.remove('is-open');
+  mask.classList.remove('is-open');
+  modal.classList.add('is-closing');
+  mask.classList.add('is-closing');
+  const done = () => {
+    modal.classList.remove('is-closing');
+    mask.classList.remove('is-closing');
+    modal.hidden = true;
+    mask.hidden = true;
+    modal.setAttribute('aria-hidden', 'true');
+    // 只有设置抽屉也关着时才解锁，否则抽屉还在下面
+    const drawer = document.getElementById('settingsDrawer');
+    const authOpen = document.getElementById('authPanel') && !document.getElementById('authPanel').hidden;
+    const anaOpen = document.getElementById('anaModal') && !document.getElementById('anaModal').hidden;
+    if (!authOpen && !anaOpen && typeof lockPageScroll === 'function') lockPageScroll(false);
+  };
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) done(); else setTimeout(done, 200);
+}
 /** 检测器档位：更新选中态 */
 function syncPresetChips() {
   const cur = curSettings().detectPreset;
   document.querySelectorAll('.preset-chip').forEach(btn => {
     btn.classList.toggle('is-active', btn.getAttribute('data-preset') === cur);
   });
+  // 设置抽屉里那行入口显示当前档位名
+  const txt = document.getElementById('presetCurrentText');
+  if (txt && typeof DETECT_PRESETS !== 'undefined' && DETECT_PRESETS[cur]) {
+    txt.textContent = DETECT_PRESETS[cur].name;
+  }
 }
 
 /** 绑定档位卡片的点击 */
@@ -427,6 +525,7 @@ function bindPresetChips() {
       applySettings(next);
       pushRemoteSettings();
       if (typeof renderDiagPanel === 'function') renderDiagPanel();
+      closePresetModal();
     });
   });
 }
@@ -505,11 +604,41 @@ function initSettingsUI() {
   });
 
   // 三个直达入口：页头「分析」→ 诊断；表情信息区「阈值对比实验」→ 实验；设置 → 顶部
+  // 档位弹层：设置抽屉里的入口 + 遮罩 + 关闭键
+  const openPreset = document.getElementById('openPresetBtn');
+  if (openPreset) openPreset.addEventListener('click', openPresetModal);
+  const presetClose = document.getElementById('presetClose');
+  if (presetClose) presetClose.addEventListener('click', closePresetModal);
+  const presetMask = document.getElementById('presetMask');
+  if (presetMask) presetMask.addEventListener('click', closePresetModal);
+  document.addEventListener('keydown', e => {
+    const m = document.getElementById('presetModal');
+    if (e.key === 'Escape' && m && !m.hidden) { e.stopPropagation(); closePresetModal(); }
+  }, true);
+
+  // 分析弹层：设置抽屉两个入口 + 页头「分析」按钮 + 表情区内联入口
+  const od = document.getElementById('openDiagBtn');
+  if (od) od.addEventListener('click', () => openAnaModal('diag'));
+  const oe = document.getElementById('openExpBtn');
+  if (oe) oe.addEventListener('click', () => openAnaModal('exp'));
+  const ac = document.getElementById('anaClose');
+  if (ac) ac.addEventListener('click', closeAnaModal);
+  const am = document.getElementById('anaMask');
+  if (am) am.addEventListener('click', closeAnaModal);
+  const td = document.getElementById('tabDiag');
+  if (td) td.addEventListener('click', () => setAnaTab('diag'));
+  const te = document.getElementById('tabExp');
+  if (te) te.addEventListener('click', () => setAnaTab('exp'));
+  document.addEventListener('keydown', e => {
+    const m = document.getElementById('anaModal');
+    if (e.key === 'Escape' && m && !m.hidden) { e.stopPropagation(); closeAnaModal(); }
+  }, true);
+
   const analyzeBtn = document.getElementById('analyzeBtn');
-  if (analyzeBtn) analyzeBtn.addEventListener('click', () => openDrawerTo('diagSection'));
+  if (analyzeBtn) analyzeBtn.addEventListener('click', () => openAnaModal('diag'));
 
   const infoExpBtn = document.getElementById('infoExpBtn');
-  if (infoExpBtn) infoExpBtn.addEventListener('click', () => openDrawerTo('expSection'));
+  if (infoExpBtn) infoExpBtn.addEventListener('click', () => openAnaModal('exp'));
 
 
   const copyBtn = document.getElementById('copyLinkBtn');

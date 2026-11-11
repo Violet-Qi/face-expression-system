@@ -2836,12 +2836,16 @@ html[data-theme="sakura"] .fx-shape {
   gap: 8px;
 }
 
+/* 档位卡片：单列纵向布局。
+   之前用 grid-template-columns: 1fr auto + em{white-space:nowrap}，
+   抽屉窄的时候右侧那列把左边挤成竖排，文字一列一个字（截图里那个错位）。 */
 .preset-chip {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 2px 10px;
-  align-items: baseline;
-  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: 100%;
+  padding: 11px 13px;
   text-align: left;
   font-family: inherit;
   background: var(--card);
@@ -2849,10 +2853,9 @@ html[data-theme="sakura"] .fx-shape {
   border-radius: 10px;
   cursor: pointer;
   transition: border-color var(--dur-fast) var(--ease-out),
-              background var(--dur-fast) var(--ease-out),
-              transform var(--dur-fast) var(--ease-out);
+              background var(--dur-fast) var(--ease-out);
 }
-.preset-chip:hover { transform: translateY(-1px); border-color: var(--border-strong); }
+.preset-chip:hover { border-color: var(--border-strong); }
 .preset-chip.is-active {
   border-color: var(--primary);
   background: var(--tint);
@@ -2860,27 +2863,23 @@ html[data-theme="sakura"] .fx-shape {
 .preset-chip.is-busy { opacity: .55; pointer-events: none; }
 
 .preset-chip b {
-  grid-column: 1;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 600;
   color: var(--text);
+  line-height: 1.3;
 }
-.preset-chip span {
-  grid-column: 1;
+.preset-chip .preset-sub {
   font-size: 11.5px;
   color: var(--text-muted);
+  line-height: 1.4;
 }
-.preset-chip em {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  align-self: center;
-  font-style: normal;
+.preset-chip .preset-meta {
   font-size: 11px;
   color: var(--text-muted);
-  white-space: nowrap;
   opacity: .85;
+  line-height: 1.4;
 }
-.preset-chip.is-active em { color: var(--primary); opacity: 1; }
+.preset-chip.is-active .preset-meta { color: var(--primary); opacity: 1; }
 .preset-chip.is-active b::after {
   content: ' ✓';
   color: var(--primary);
@@ -2889,4 +2888,136 @@ html[data-theme="sakura"] .fx-shape {
 @media (max-width: 760px) {
   .preset-chip { grid-template-columns: 1fr; }
   .preset-chip em { grid-column: 1; grid-row: auto; }
+}
+/* ============================================================
+   检测精度弹层（v1.8.2）
+   ------------------------------------------------------------
+   三档原来塞在设置抽屉里，抽屉只有 390px 宽，卡片被挤得文字竖排。
+   现在单独开一个居中弹层，空间足够，设置里只留一行入口。
+   ============================================================ */
+
+/* 设置抽屉里的入口行 */
+.set-row-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 13px;
+  text-align: left;
+  font-family: inherit;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out),
+              background var(--dur-fast) var(--ease-out);
+}
+.set-row-btn:hover { border-color: var(--border-strong); background: var(--surface-3); }
+.set-row-btn-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.set-row-btn-main b { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.set-row-btn-main span { font-size: 11.5px; color: var(--primary); font-weight: 600; }
+.set-row-btn-arrow { flex: none; font-size: 20px; color: var(--text-muted); line-height: 1; }
+
+/* 弹层本体 */
+.preset-modal {
+  position: fixed;
+  z-index: 960;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 420px;
+  max-width: 92vw;
+  max-height: 86vh;
+  overflow-y: auto;
+  padding: 20px 20px 22px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(16, 42, 80, .18);
+  opacity: 0;
+  transition: opacity 200ms var(--ease-out);
+}
+.preset-modal.is-open { opacity: 1; animation: fxPopUp 300ms var(--ease-back) both; }
+.preset-modal.is-closing { animation: fxPopDown 200ms var(--ease-in) both; }
+
+.preset-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.preset-modal-head h2 { margin: 0; font-size: 17px; font-weight: 600; }
+.preset-modal-desc {
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.preset-list { display: flex; flex-direction: column; gap: 9px; }
+.preset-modal-note {
+  margin: 14px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  opacity: .8;
+}
+
+@media (max-width: 760px) {
+  .preset-modal {
+    width: 100%; max-width: 100%; max-height: 88vh;
+    top: auto; bottom: 0;
+    transform: translate(-50%, 0);
+    border-radius: 16px 16px 0 0;
+    left: 50%;
+  }
+  .preset-modal.is-open { animation: fxPopUpSheet 300ms var(--ease-back) both; }
+  .preset-modal.is-closing { animation: fxPopDownSheet 200ms var(--ease-in) both; }
+}
+/* 分析弹层的标签页与面板 */
+.ana-tabs { margin: 4px 0 14px; }
+.ana-pane { animation: fxFadeIn 200ms var(--ease-out) both; }
+.ana-modal { width: 460px; }
+.ana-modal .diag-grid { grid-template-columns: 1fr 1fr; }
+
+@media (max-width: 760px) {
+  .ana-modal { width: 100%; }
+  .ana-modal .diag-grid { grid-template-columns: 1fr; }
+}
+/* ============================================================
+   移动端键盘兼容（v1.8.2）
+   ------------------------------------------------------------
+   用户报「手机注册时输入一个字母键盘就收起」。原因有两层：
+   ① JS 里把 html 的 overflow 锁了，iOS 聚焦输入框时想「滚进可视区」但滚不动，直接失焦
+      （已在 auth.js 的 lockPageScroll 里改掉：手机端不锁 overflow）
+   ② 弹层的 max-height 用了 vh —— vh 不随软键盘缩小，键盘弹出后弹层比可视区还高，
+      浏览器为了露出输入框会做滚动，容易触发失焦
+
+   这里用 dvh（动态视口高度，会随键盘收缩）覆盖 vh，
+   并给 body 加 modal-open-mobile 时禁用穿透滚动（用 overscroll-behavior，不锁 overflow）。
+   ============================================================ */
+
+@media (max-width: 760px) {
+  /* dvh 优先；不支持 dvh 的浏览器自动忽略这两行，回落到原来的 vh 规则 */
+  .auth-panel { max-height: 82dvh; }
+  .preset-modal, .ana-modal { max-height: 82dvh; }
+  .drawer { max-height: 100dvh; }
+
+  /* 弹层打开时挡住背景的穿透滚动，但不禁止 html 滚动（避免输入框失焦） */
+  body.modal-open-mobile { overscroll-behavior: contain; }
+  body.modal-open-mobile .auth-panel,
+  body.modal-open-mobile .preset-modal,
+  body.modal-open-mobile .ana-modal {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* 输入框在手机上稍大一点，避免点不准导致反复失焦 */
+@media (max-width: 760px) {
+  .auth-field input,
+  .set-import textarea,
+  .exp-truth input {
+    font-size: 16px;    /* iOS 下小于 16px 会自动放大页面，也会造成跳动 */
+  }
 }

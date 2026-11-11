@@ -210,6 +210,8 @@ const PROMPTED_KEY = 'fes.authPrompted.v1';
  * ?debug=1 / ?cover=0 下不弹，否则所有自动化测试都会被弹层挡住。
  */
 function maybePromptAuth() {
+  const panel = document.getElementById('authPanel');
+  if (panel && !panel.hidden) return;     // 已经开着，别重复弹（也不抢焦点）
   const q = new URLSearchParams(location.search);
   if (q.has('debug') || q.get('cover') === '0') return;
   if (currentUser) return;
@@ -230,6 +232,20 @@ function lockPageScroll(lock) {
   const html = document.documentElement;
   const body = document.body;
   if (!html || !body) return;
+
+  /* ⚠️ 手机端**不能**锁 html 的 overflow。
+     iOS Safari 有一个已知行为：html/body 被禁止滚动时，
+     聚焦输入框会尝试「把输入框滚进可视区」，但滚动被禁 → 浏览器放弃 → 输入框失焦，
+     表现就是「输入一个字母键盘就收起」（用户报的真实问题）。
+     手机端的弹层本身是整屏宽/底部抽屉，背景滚动影响很小，所以这里不加锁。 */
+  const isMobile = window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
+  if (lock && isMobile) {
+    // 只用 CSS 的 overscroll-behavior 挡住穿透滚动，不动 overflow
+    body.classList.add('modal-open-mobile');
+    return;
+  }
+  if (!lock) body.classList.remove('modal-open-mobile');
+
   if (lock) {
     const sbw = window.innerWidth - html.clientWidth;   // 滚动条宽度（0 表示本来就没滚动条）
     html.dataset.prevOverflow = html.style.overflow || '';
@@ -248,6 +264,23 @@ function openAuthPanel(reason) {
   const mask = document.getElementById('authMask');
   const panel = document.getElementById('authPanel');
   if (!mask || !panel) return;
+
+  /* 已经开着就只更新提示，**不要重新初始化**：
+     重复调用会重播动画、并把焦点抢到「登录」的用户名框上，
+     如果用户正在「注册」页签输入，就会当场失焦、键盘收起。 */
+  if (!panel.hidden) {
+    const hintEl = document.getElementById('authHint');
+    if (hintEl) {
+      if (reason === 'guest-used') {
+        hintEl.textContent = '游客体验机会已用完。注册一个账号即可继续使用，并保存你的统计数据。';
+        hintEl.hidden = false;
+      } else if (reason === 'need-login') {
+        hintEl.textContent = '请先登录。'; hintEl.hidden = false;
+      }
+    }
+    return;
+  }
+
   mask.hidden = false;
   panel.hidden = false;
   lockPageScroll(true);
@@ -270,8 +303,19 @@ function openAuthPanel(reason) {
     }
   }
   setAuthTab('login');
-  const u = document.getElementById('loginUser');
-  if (u) setTimeout(() => u.focus(), 80);
+  /* 自动聚焦要克制：只在「页面上没有任何元素被聚焦」时才做，而且聚焦**当前页签**的输入框。
+     之前无条件聚焦 loginUser —— 如果用户已经在别的输入框里打字，这一下会把焦点抢走、键盘收起。 */
+  setTimeout(() => {
+    const ae = document.activeElement;
+    const someoneTyping = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA');
+    if (someoneTyping) return;
+    const loginForm = document.getElementById('loginForm');
+    const onLoginTab = loginForm && !loginForm.hidden;
+    const target = onLoginTab
+      ? document.getElementById('loginUser')
+      : document.getElementById('regUser');
+    if (target) target.focus();
+  }, 80);
 }
 
 function closeAuthPanel() {
