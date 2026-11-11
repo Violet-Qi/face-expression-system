@@ -36,7 +36,8 @@ const DEFAULT_SETTINGS = {
   detectPreset: 'speed',     // 检测器档位：speed / balanced / accurate
   smoothAlpha: 0.40,         // 多帧平滑强度：越大越跟随新帧（0 = 关闭）
   smoothHysteresis: 2,       // 标签切换要连续赢几次
-  expressionEngine: 'faceapi'  // 表情引擎：faceapi（内置）/ ferplus（增强，仅电脑）
+  expressionEngine: 'faceapi',  // 表情引擎：faceapi（快速）/ ferplus（增强）
+  cameraUseEnhance: true     // 摄像头模式是否允许增强表情模型（手机一律不允许）
 };
 
 /** 参数范围（滑块和校验共用） */
@@ -91,7 +92,9 @@ function sanitizeSettings(raw) {
     } else if (k === 'detectPreset') {
       out.detectPreset = DETECT_PRESET_KEYS.indexOf(String(raw.detectPreset)) >= 0 ? String(raw.detectPreset) : 'speed';
     }
-    else if (k === 'expressionEngine') {
+    else if (k === 'cameraUseEnhance') {
+      out.cameraUseEnhance = (raw.cameraUseEnhance === false || raw.cameraUseEnhance === 'false') ? false : true;
+    } else if (k === 'expressionEngine') {
       const ee = String(raw.expressionEngine);
       out.expressionEngine = (ee === 'ferplus') ? 'ferplus' : 'faceapi';
     } else {
@@ -561,19 +564,37 @@ async function switchPresetFromMenu(key, btnEl) {
 async function switchExpressionEngine(key, btnEl) {
   if (key === (curSettings().expressionEngine || 'faceapi')) { closePresetMenu(); return; }
 
-  // 增强档：手机上直接拒绝（模型 28 MB，手机跑不动也没必要）
   if (key === 'ferplus') {
+    /* 增强模型要下载约 28 MB（模型 18.4 + 运行时 10）。
+       手机上原来是直接拒绝，但用户希望手机上也能用，改成：
+         ① 告知体积，让使用者自己决定（检测到移动网络时额外提醒）
+         ② 同意后加载，状态条显示进度
+         ③ 摄像头模式会自动回落到快速模型（见 camera.js），这里不用管 */
+    const needed = 28;
+    const onCellular = (function () {
+      const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (!c) return false;
+      if (c.type === 'cellular') return true;
+      return c.effectiveType === 'slow-2g' || c.effectiveType === '2g' || c.effectiveType === '3g';
+    })();
+
     const narrow = window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
     if (narrow) {
-      alert('增强表情模型只在电脑上开放（模型 18 MB，手机加载与推理都太慢）。');
-      return;
+      const msg = '启用增强表情模型需要下载约 ' + needed + ' MB 数据' +
+                  (onCellular ? '（检测到当前可能是移动网络）' : '') + '。\n\n' +
+                  '建议在 WiFi 下进行。\n\n' +
+                  '注意：摄像头模式会自动使用快速模型（增强模型帧率太低）。\n\n' +
+                  '确定要下载吗？';
+      if (!confirm(msg)) return;
     }
+
     if (btnEl) btnEl.classList.add('is-busy');
-    setStatus('正在加载增强表情模型（约 18 MB，首次较慢）…', 'loading');
+    setStatus('正在加载增强表情模型（约 ' + needed + ' MB，首次较慢）…', 'loading');
+
     const ok = await ensureEnhanceEngine();
     if (btnEl) btnEl.classList.remove('is-busy');
     if (!ok) {
-      setStatus('增强表情模型加载失败，已保持内置模型。', 'error');
+      setStatus('增强表情模型加载失败，已保持快速表情模型。', 'error');
       syncPresetPicker();
       return;
     }
@@ -588,7 +609,7 @@ async function switchExpressionEngine(key, btnEl) {
   closePresetMenu();
 }
 
-/** 切换表情引擎`r`n`r`n/** 同步下拉按钮上的文字与选中态 */
+/** 同步下拉按钮上的文字与选中态 */
 function syncPresetPicker() {
   const cur = curSettings().detectPreset;
   const p = (typeof DETECT_PRESETS !== 'undefined' && DETECT_PRESETS[cur]) ? DETECT_PRESETS[cur] : null;
@@ -820,12 +841,10 @@ function initSettingsUI() {
     const m = document.getElementById('presetModal');
     if (e.key === 'Escape' && m && !m.hidden) { e.stopPropagation(); closePresetModal(); }
   }, true);
-  /* 页头档位下拉：只在桌面启用。
-     手机上它被 CSS 隐藏了（页头放不下），用户走「设置 → 检测精度」，
-     所以这里也跳过绑定，免得留一个看不见还能被键盘聚焦的控件。 */
+  /* 页头档位下拉：桌面和手机都启用。
+     手机上有 CSS 收窄成只显示图标，但依然能点开切档（v1.9.1 起手机支持增强模型）。 */
   const pickerBtn = document.getElementById('presetPickerBtn');
-  const isNarrow = window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
-  if (pickerBtn && !isNarrow) pickerBtn.addEventListener('click', (e) => { e.stopPropagation(); togglePresetMenu(); });
+  if (pickerBtn) pickerBtn.addEventListener('click', (e) => { e.stopPropagation(); togglePresetMenu(); });
   document.addEventListener('click', (e) => {
     const picker = document.getElementById('presetPicker');
     if (picker && !picker.contains(e.target)) closePresetMenu();

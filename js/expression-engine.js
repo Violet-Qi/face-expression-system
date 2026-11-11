@@ -203,3 +203,18 @@ function currentExpressionEngineName() {
   const e = s && s.expressionEngine ? s.expressionEngine : 'faceapi';
   return e === 'ferplus' ? '增强表情模型（FERPlus）' : '快速表情模型（face-api）';
 }
+
+/**
+ * 摄像头模式是否允许用增强模型。
+ * 增强模型单次推理约 52 ms（桌面 wasm），加上检测合计约 100~150 ms/帧，
+ * 摄像头连续跑会明显掉帧，所以默认**只允许电脑**，且用户能在设置里彻底关掉。
+ * 手机上任何模式都回落快速模型。
+ */
+function cameraEnhanceAllowed() {
+  const s = (typeof curSettings === 'function') ? curSettings() : null;
+  if (!s) return false;
+  // 用户显式关掉「摄像头用增强模型」时，一律不启用
+  if (s.cameraUseEnhance === false) return false;
+  const narrow = window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
+  return !narrow;
+}

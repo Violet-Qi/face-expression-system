@@ -3159,11 +3159,13 @@ html[data-theme="sakura"] .fx-shape {
   .preset-picker-caret { display: none; }
 
 }
-/* 手机端不显示页头下拉 —— 页头本来就挤（分析/登录/设置三个按钮），
-   再加一个档位选择器会放不下。手机用户继续走「设置 → 检测精度」那条路，
-   那里本来就有完整的三档说明，触控目标也更大。 */
+/* 手机端：下拉**保留**，但只显示图标（页头放不下完整文字）。
+   v1.9.1 起手机也能用增强表情模型，所以档位入口必须留着。 */
 @media (max-width: 760px) {
-  .preset-picker { display: none; }
+  .preset-picker { display: inline-flex; }
+  .preset-picker-txt { display: none; }
+  .preset-picker-caret { display: none; }
+  .preset-picker-btn { padding: 6px 8px; gap: 0; }
 }
 /* 下拉菜单里的分组小标题（检测器 / 表情模型） */
 .pm-group-title {

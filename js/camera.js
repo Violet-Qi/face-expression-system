@@ -143,8 +143,15 @@ async function detectCameraFrame() {
     .detectAllFaces(video, options)
     .withFaceExpressions();
 
-  /* 增强表情引擎：选了 FERPlus 就用它覆盖（仅电脑档） */
-  if (typeof curSettings === "function" && curSettings().expressionEngine === "ferplus" && results.length) {
+  /* 摄像头模式**不启用增强表情模型**：
+     增强模型单次推理约 52 ms（桌面），摄像头连续检测会明显掉帧。
+     这里判断设备是否允许 —— 电脑上允许，但用户可以在设置里关掉；
+     手机上一律回落快速模型。 */
+  if (typeof curSettings === "function"
+      && curSettings().expressionEngine === "ferplus"
+      && typeof cameraEnhanceAllowed === "function"
+      && cameraEnhanceAllowed()
+      && results.length) {
     try { await applyEnhanceExpressions(results, video); } catch (e) { /* 单帧失败不影响继续 */ }
   }
 
