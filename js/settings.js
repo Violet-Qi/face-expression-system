@@ -24,10 +24,15 @@ const SETTINGS_KEY = 'fes.settings.v1';
 const DEVICE_KEY   = 'fes.deviceId.v1';
 
 /** 默认值。注意 detectThreshold 与 config.js 的 SCORE_TH 保持一致 */
+/* 可选主题。'default' 就是原来的橙色，不设 data-theme，保证老观感不变 */
+const THEMES = ['default', 'sunflower', 'ocean', 'sakura'];
+const THEME_CN = { default: '默认橙', sunflower: '向日葵黄', ocean: '海洋蓝', sakura: '樱花粉' };
+
 const DEFAULT_SETTINGS = {
   detectThreshold: 0.50,     // 人脸检测阈值 0.30~0.80
   uncertainThreshold: 0.00,  // top1 低于它显示"不确定"，0 = 关闭
-  cameraInterval: 400        // 摄像头检测间隔(ms) 200~1000
+  cameraInterval: 400,       // 摄像头检测间隔(ms) 200~1000
+  theme: 'default'           // 主题色（字符串，不走数值夹紧）
 };
 
 /** 参数范围（滑块和校验共用） */
@@ -73,9 +78,28 @@ function sanitizeSettings(raw) {
   const out = Object.assign({}, DEFAULT_SETTINGS);
   if (!raw || typeof raw !== 'object') return out;
   for (const k of Object.keys(DEFAULT_SETTINGS)) {
-    if (raw[k] !== undefined) out[k] = clampSetting(k, raw[k]);
+    if (raw[k] === undefined) continue;
+    if (k === 'theme') {
+      // 主题是字符串，不能走数值夹紧，只接受白名单
+      out.theme = THEMES.indexOf(String(raw.theme)) >= 0 ? String(raw.theme) : 'default';
+    } else {
+      out[k] = clampSetting(k, raw[k]);
+    }
   }
   return out;
+}
+
+/** 把主题套到 html 上。'default' 时移除属性，回到原始橙色 */
+function applyTheme(name) {
+  const root = document.documentElement;
+  const t = THEMES.indexOf(name) >= 0 ? name : 'default';
+  if (t === 'default') root.removeAttribute('data-theme');
+  else root.setAttribute('data-theme', t);
+  // 移动端浏览器地址栏跟着变（支持的浏览器才有用，不支持就算了）
+  const meta = document.querySelector('meta[name="theme-color"]');
+  const colors = { default: '#f4f6f8', sunflower: '#fdf8ec', ocean: '#eef5fa', sakura: '#fdf3f5' };
+  if (meta) meta.setAttribute('content', colors[t]);
+  return t;
 }
 
 function readLocalSettings() {
@@ -117,6 +141,7 @@ function deviceId() {
 /** 把设置应用成当前生效值（不重算已有结果，下次识别才生效） */
 function applySettings(next, opts) {
   activeSettings = sanitizeSettings(next);
+  applyTheme(activeSettings.theme);
   writeLocalSettings();
   syncDrawerUI();
   const o = opts || {};
@@ -276,9 +301,12 @@ function setDrawer(open) {
     syncDrawerUI();
   } else {
     d.classList.remove('is-open'); m.classList.remove('is-open');
+    d.classList.add('is-closing');        // 让退场关键帧有机会跑
     d.setAttribute('aria-hidden', 'true');
     if (b) b.setAttribute('aria-expanded', 'false');
-    setTimeout(() => { if (!drawerOpen) { d.hidden = true; m.hidden = true; } }, 240);
+    setTimeout(() => {
+      if (!drawerOpen) { d.classList.remove('is-closing'); d.hidden = true; m.hidden = true; }
+    }, 240);
   }
 }
 
@@ -322,8 +350,17 @@ function syncDrawerUI() {
     st.className = 'set-status ' + (settingsSyncState === 'ok' ? 'is-ok' : settingsSyncState === 'offline' ? 'is-warn' : '');
   }
 
+  syncThemeChips();
+
   const dirty = document.getElementById('settingsDirty');
   if (dirty) dirty.hidden = !pushPending;
+}
+
+/** 主题切换器：更新选中态 */
+function syncThemeChips() {
+  document.querySelectorAll('.theme-chip').forEach(btn => {
+    btn.classList.toggle('is-active', btn.getAttribute('data-theme') === activeSettings.theme);
+  });
 }
 
 /** 点「复制设置链接」 */
@@ -381,6 +418,16 @@ function initSettingsUI() {
     });
   });
 
+  // 主题切换
+  document.querySelectorAll('.theme-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const next = Object.assign({}, activeSettings);
+      next.theme = btn.getAttribute('data-theme');
+      applySettings(next);
+      pushRemoteSettings();
+    });
+  });
+
   const copyBtn = document.getElementById('copyLinkBtn');
   if (copyBtn) copyBtn.addEventListener('click', copyShareLink);
 
@@ -414,6 +461,19 @@ function initSettingsUI() {
 async function bootSettings() {
   initSettingsUI();
 
+  /* ?debug=1 / ?cover=0 时**完全忽略已保存的设置**，一律用默认值。
+     原因：自动化测试共用同一个浏览器 profile，上一套测试把阈值改到 0.66，
+     下一套测试就会少检出人脸（跨照片套件 9 项失败就是这么来的）。
+     调试模式本来就该"每次都是同一个起点"，顺手也把测试之间隔离开了。 */
+  const q = new URLSearchParams(location.search);
+  if (q.has('debug') || q.get('cover') === '0') {
+    activeSettings = Object.assign({}, DEFAULT_SETTINGS);
+    applyTheme(activeSettings.theme);
+    syncDrawerUI();
+    if (typeof onSettingsApplied === 'function') onSettingsApplied();
+    return;
+  }
+
   const local = readLocalSettings();
   if (local) activeSettings = local;
 
@@ -423,8 +483,10 @@ async function bootSettings() {
   if (!hadPreset) {
     const remote = await fetchRemoteSettings();
     if (remote) {
-      // 云端有记录就用云端的（这台设备之前存过）
-      applySettings(remote, { silent: true });
+      /* 云端有记录就套用，但**要和本机合并**而不是整体替换：
+         云端那条可能是旧版本存下的（比如还没有 theme 字段），
+         直接替换会把本机已有的主题冲掉（实测刷新后主题丢失就是这个原因）。 */
+      applySettings(Object.assign({}, local || {}, remote), { silent: true });
     } else if (!local) {
       // 第一次用：把本机默认值登记到匿名编号下
       pushRemoteSettings();

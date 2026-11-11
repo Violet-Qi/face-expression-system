@@ -18,6 +18,15 @@
   --danger:        #d93a3a;
   --radius:        8px;
   --shadow:        0 1px 2px rgba(16, 24, 40, .04), 0 1px 3px rgba(16, 24, 40, .06);
+
+  /* 语义色（v1.8.0）：原来这些位置写死成冷灰 #eef1f4 / #fcfcfd / #fff7f0，
+     换主题时不跟着变，中间那些框会显得很脏。
+     现在全部走变量 —— 换主题只改变量，组件规则一行都不用动。 */
+  --surface-2:     #eef1f4;   /* 次级面：进度条底、缩略图底、分段控件底 */
+  --surface-3:     #fcfcfd;   /* 三级面：画布容器、趋势画布 */
+  --surface-4:     #fafbfc;   /* 面板标题条 */
+  --tint:          #fff7f0;   /* 主色淡染：拖拽高亮、选中标签 */
+  --tint-strong:   rgba(255, 122, 26, .10);
 }
 
 * { box-sizing: border-box; }
@@ -133,7 +142,7 @@ body {
   gap: 6px;
   margin-bottom: 14px;
   padding: 4px;
-  background: #eaeef2;
+  background: var(--surface-2);
   border-radius: var(--radius);
   width: fit-content;
 }
@@ -199,7 +208,7 @@ body {
   padding: 10px;
   border: 2px solid var(--border);
   border-radius: 10px;
-  background: #fbfcfd;
+  background: var(--surface-3);
   min-width: 180px;
   max-width: 100%;
   overflow: hidden;
@@ -219,7 +228,7 @@ body {
   object-fit: cover;
   border-radius: 8px;
   display: block;
-  background: #eef1f4;
+  background: var(--surface-2);
   flex: none;
 }
 
@@ -330,7 +339,7 @@ body {
 .stat-bar {
   flex: 1;
   height: 10px;
-  background: #eef1f4;
+  background: var(--surface-2);
   border-radius: 5px;
   overflow: hidden;
 }
@@ -462,7 +471,7 @@ body {
   gap: 6px;
   padding: 10px 14px;
   border-bottom: 1px solid var(--border);
-  background: #fafbfc;
+  background: var(--surface-4);
   font-size: 13px;
   color: var(--text-muted);
 }
@@ -510,7 +519,7 @@ body {
 /* 拖拽悬停时高亮，给用户明确反馈 */
 .drop-zone.dragover {
   border-color: var(--primary);
-  background: #fff7f0;
+  background: var(--tint);
 }
 
 .drop-inner {
@@ -541,7 +550,7 @@ body {
   transition: background .15s linear, border-color .15s linear;
 }
 
-.btn-ghost:hover { background: #f3f5f7; border-color: #c2cad3; }
+.btn-ghost:hover { background: var(--surface-2); border-color: #c2cad3; }
 
 /* ---------------- 图片与画布 ---------------- */
 /* 用 max-width/max-height + auto 尺寸，让 img 元素盒子刚好等于图片可见区域，
@@ -566,7 +575,7 @@ body {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: #fcfcfd;
+  background: var(--surface-3);
   /* 图片比框大时，框按图片比例变形（见 js/render.js 的 morphImageWrap） */
   transition: height 340ms var(--ease-out);
 }
@@ -647,7 +656,7 @@ body {
 .face-bar {
   flex: 1;
   height: 8px;
-  background: #eef1f4;
+  background: var(--surface-2);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -690,7 +699,7 @@ body {
 .trend-canvas-wrap canvas {
   width: 100%;
   height: 180px;
-  background: #fcfcfd;
+  background: var(--surface-3);
   border: 1px solid var(--border);
   border-radius: 6px;
 }
@@ -773,7 +782,7 @@ body {
 .drop-zone.has-image .preview-img { cursor: pointer; }
 
 /* 拖拽新图时的高亮：这时候整个区域都可以接收 */
-.drop-zone.has-image.dragover { background: #fff7f0; }
+.drop-zone.has-image.dragover { background: var(--tint); }
 
 /* ---------------- 批量识别 ---------------- */
 .batch-panel {
@@ -806,7 +815,7 @@ body {
 
 .batch-bar {
   height: 6px;
-  background: #eef1f4;
+  background: var(--surface-2);
   border-radius: 3px;
   overflow: hidden;
   margin-top: 8px;
@@ -1257,7 +1266,7 @@ button:not(:disabled):active,
 }
 .group-opt-label:has(input:checked),
 .mask-opt-label:has(input:checked) {
-  background: #fff7f0;
+  background: var(--tint);
   border-color: #ffd7b0;
 }
 
@@ -2449,4 +2458,323 @@ body.fx-anim .page-footer {
     transform: translate(-50%, 0);
     animation: fxPopUpSheet 380ms var(--ease-back) both;
   }
+}
+/* ============================================================
+   主题色切换（v1.8.0）—— 向日葵黄 / 海洋蓝 / 樱花粉
+   ------------------------------------------------------------
+   做法：只换 `:root` 里那套 CSS 变量，不改任何组件规则。
+   · 默认（无 data-theme）就是原来的橙色，保证老用户观感不变
+   · 每套主题都调过对比度：正文与底色的对比 ≥ 7:1，按钮文字为白色时背景足够深
+   · 只换颜色，不动圆角/间距/阴影 —— 换肤不该改变布局
+   ============================================================ */
+
+/* ---------- 向日葵黄：暖、亮、有阳光感 ---------- */
+html[data-theme="sunflower"] {
+  --bg:            #fdf8ec;
+  --card:          #ffffff;
+  --border:        #efe4c8;
+  --border-strong: #e0d0a8;
+  --text:          #2a2416;
+  --text-muted:    #7d7154;
+  --primary:       #e8a317;   /* 向日葵花瓣金 */
+  --primary-hover: #d18f0a;
+  --primary-press: #b87c06;
+  --success:       #4a8a3a;
+  --danger:        #c94a3a;
+  --surface-2:     #f7edd3;
+  --surface-3:     #fffdf6;
+  --surface-4:     #fdf7e6;
+  --tint:          #fdf1cf;
+  --tint-strong:   rgba(232, 163, 23, .14);
+}
+
+/* ---------- 海洋蓝：冷、静、专业 ---------- */
+html[data-theme="ocean"] {
+  --bg:            #eef5fa;
+  --card:          #ffffff;
+  --border:        #d6e3ee;
+  --border-strong: #bdd0e0;
+  --text:          #14212e;
+  --text-muted:    #5a7085;
+  --primary:       #1a7fd4;   /* 海水蓝 */
+  --primary-hover: #156dba;
+  --primary-press: #115b9d;
+  --success:       #1c8f5a;
+  --danger:        #cf3d3d;
+  --surface-2:     #e2edf6;
+  --surface-3:     #f8fcff;
+  --surface-4:     #f1f8fd;
+  --tint:          #e3f0fb;
+  --tint-strong:   rgba(26, 127, 212, .13);
+}
+
+/* ---------- 樱花粉：柔、淡、温柔 ---------- */
+html[data-theme="sakura"] {
+  --bg:            #fdf3f5;
+  --card:          #ffffff;
+  --border:        #f4dee3;
+  --border-strong: #e8c7ce;
+  --text:          #2c1d21;
+  --text-muted:    #8a6a72;
+  --primary:       #e8698a;   /* 樱花 */
+  --primary-hover: #d55478;
+  --primary-press: #bd4567;
+  --success:       #3f9160;
+  --danger:        #c8443f;
+  --surface-2:     #fbe8ec;
+  --surface-3:     #fffcfe;
+  --surface-4:     #fef6f8;
+  --tint:          #fde9ee;
+  --tint-strong:   rgba(232, 105, 138, .13);
+}
+
+/* ---------- 主题色下的封面光斑：跟着主色走，别还是橙色 ---------- */
+html[data-theme="sunflower"] .cover {
+  background-image:
+    radial-gradient(58vmax 40vmax at 14% 8%, rgba(232, 163, 23, .22), transparent 62%),
+    radial-gradient(50vmax 36vmax at 86% 18%, rgba(245, 197, 66, .16), transparent 64%),
+    radial-gradient(46vmax 34vmax at 72% 90%, rgba(214, 158, 46, .13), transparent 64%) !important;
+}
+html[data-theme="sunflower"] .cover::before {
+  background: linear-gradient(135deg, rgba(232, 163, 23, .34), rgba(232, 163, 23, .05) 72%) !important;
+}
+html[data-theme="sunflower"] .cover::after {
+  background: linear-gradient(135deg, rgba(245, 197, 66, .26), rgba(232, 163, 23, .05) 72%) !important;
+}
+
+html[data-theme="ocean"] .cover {
+  background-image:
+    radial-gradient(58vmax 40vmax at 14% 8%, rgba(26, 127, 212, .20), transparent 62%),
+    radial-gradient(50vmax 36vmax at 86% 18%, rgba(90, 180, 230, .15), transparent 64%),
+    radial-gradient(46vmax 34vmax at 72% 90%, rgba(26, 100, 180, .13), transparent 64%) !important;
+}
+html[data-theme="ocean"] .cover::before {
+  background: linear-gradient(135deg, rgba(26, 127, 212, .32), rgba(26, 127, 212, .05) 72%) !important;
+}
+html[data-theme="ocean"] .cover::after {
+  background: linear-gradient(135deg, rgba(90, 180, 230, .24), rgba(26, 127, 212, .05) 72%) !important;
+}
+
+html[data-theme="sakura"] .cover {
+  background-image:
+    radial-gradient(58vmax 40vmax at 14% 8%, rgba(232, 105, 138, .20), transparent 62%),
+    radial-gradient(50vmax 36vmax at 86% 18%, rgba(245, 170, 190, .16), transparent 64%),
+    radial-gradient(46vmax 34vmax at 72% 90%, rgba(200, 90, 130, .12), transparent 64%) !important;
+}
+html[data-theme="sakura"] .cover::before {
+  background: linear-gradient(135deg, rgba(232, 105, 138, .30), rgba(232, 105, 138, .05) 72%) !important;
+}
+html[data-theme="sakura"] .cover::after {
+  background: linear-gradient(135deg, rgba(245, 170, 190, .24), rgba(232, 105, 138, .05) 72%) !important;
+}
+
+/* ---------- 功能页背景装饰也跟着换色 ---------- */
+html[data-theme="sunflower"] .fx-shape {
+  background: linear-gradient(135deg, rgba(232, 163, 23, .16), rgba(245, 197, 66, .04) 70%) !important;
+}
+html[data-theme="ocean"] .fx-shape {
+  background: linear-gradient(135deg, rgba(26, 127, 212, .15), rgba(90, 180, 230, .04) 70%) !important;
+}
+html[data-theme="sakura"] .fx-shape {
+  background: linear-gradient(135deg, rgba(232, 105, 138, .15), rgba(245, 170, 190, .04) 70%) !important;
+}
+
+/* ---------- 切换器样式（在设置抽屉里） ---------- */
+.theme-row { display: flex; gap: 10px; }
+.theme-chip {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 6px 8px;
+  font-size: 11.5px;
+  font-family: inherit;
+  color: var(--text-muted);
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out);
+}
+.theme-chip:hover { transform: translateY(-1px); color: var(--text); }
+.theme-chip.is-active { border-color: var(--primary); color: var(--text); font-weight: 600; }
+.theme-chip .sw {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, .06);
+  box-shadow: inset 0 -3px 6px rgba(0, 0, 0, .06);
+}
+.theme-chip .sw-default  { background: linear-gradient(140deg, #ffa64d, #ff7a1a); }
+.theme-chip .sw-sunflower { background: linear-gradient(140deg, #f5c542, #e8a317); }
+.theme-chip .sw-ocean     { background: linear-gradient(140deg, #5ab4e6, #1a7fd4); }
+.theme-chip .sw-sakura    { background: linear-gradient(140deg, #f5aabf, #e8698a); }
+/* ============================================================
+   ⚠️ 重要：封面"真正消失"的通路（v1.7.3 修）
+   ------------------------------------------------------------
+   v1.7.1 重做封面时给 .cover 加了 `display: flex !important`，
+   它的优先级**高于** .cover.is-gone { display: none }（没有 !important），
+   结果封面类名虽然加上了，屏幕上却一直盖着最后一层 ——
+   表现就是"手机端右上角登录按钮点了没反应"（其实是被封面挡住了），
+   页面看起来正常只是因为封面背景是浅色、内容被盖住后不易察觉。
+   所以这里必须用 !important 把 is-gone 的优先级顶上去。
+   ============================================================ */
+.cover.is-gone {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* 退场动画期间仍然可见，但不要挡住点击（避免动画 420ms 内点不到页面） */
+.cover.is-leaving {
+  pointer-events: none !important;
+}
+/* ============================================================
+   关闭动画（v1.7.3）—— 弹窗/抽屉退场
+   ------------------------------------------------------------
+   关闭时先挂 .is-closing 播退场帧，播完 JS 才真正 hidden。
+   之前是直接 hidden，元素一消失动画来不及跑，观感就是"啪"地没了。
+   退场比进场快（240ms vs 380ms），符合"进场慢、退场快"的手感。
+   ============================================================ */
+
+@keyframes fxPopDown {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to   { opacity: 0; transform: translate(-50%, -44%) scale(.95); }
+}
+@keyframes fxPopDownSheet {
+  from { opacity: 1; transform: translate(-50%, 0)  scale(1); }
+  to   { opacity: 0; transform: translate(-50%, 10%) scale(.98); }
+}
+
+.auth-panel.is-closing {
+  animation: fxPopDown 240ms var(--ease-in) both;
+}
+.drawer.is-closing {
+  animation: fxDrawerOut 240ms var(--ease-in) both;
+}
+@keyframes fxDrawerOut {
+  from { transform: translateX(0); opacity: 1; }
+  to   { transform: translateX(30px); opacity: .55; }
+}
+
+/* 遮罩同步淡出 */
+.drawer-mask.is-closing { animation: fxFadeOut 240ms var(--ease-in) both; }
+@keyframes fxFadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+@media (max-width: 760px) {
+  .auth-panel.is-closing { animation: fxPopDownSheet 240ms var(--ease-in) both; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-panel.is-closing, .drawer.is-closing, .drawer-mask.is-closing { animation: none !important; }
+}
+/* ============================================================
+   诊断面板 + 阈值对比实验（v1.8.0）
+   ============================================================ */
+
+.diag-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 10px;
+  margin-bottom: 10px;
+}
+.diag-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 7px 9px;
+  background: var(--bg);
+  border-radius: 7px;
+}
+.diag-item span { font-size: 10.5px; color: var(--text-muted); }
+.diag-item b {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  font-family: "Consolas", "SF Mono", monospace;
+  word-break: break-all;
+}
+
+.diag-dots { display: flex; flex-wrap: wrap; gap: 6px; }
+.diag-dot {
+  padding: 2px 9px;
+  font-size: 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.diag-dot.is-ok { color: #2f6b3a; background: #eef7ef; border-color: #cfe6d3; }
+.diag-dot.is-off { color: #9b3a28; background: #fdf2f0; border-color: #f0d4cd; }
+.diag-env { font-size: 11px; color: var(--text-muted); align-self: center; }
+
+.exp-truth {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.exp-truth input {
+  width: 64px;
+  padding: 6px 8px;
+  font-size: 12.5px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  outline: none;
+}
+.exp-truth input:focus { border-color: var(--primary); }
+
+.exp-box { margin-top: 12px; }
+.exp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.exp-table th {
+  padding: 6px 8px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.exp-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: top;
+}
+.exp-table tr.is-current td { background: rgba(255, 122, 26, .06); }
+.exp-table .tag {
+  display: inline-block;
+  padding: 0 6px;
+  font-size: 10px;
+  border-radius: 4px;
+  background: var(--primary);
+  color: #fff;
+  vertical-align: middle;
+}
+.exp-scores {
+  font-family: "Consolas", "SF Mono", monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  word-break: break-all;
+}
+.exp-note {
+  margin: 9px 0 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+@media (max-width: 760px) {
+  .diag-grid { grid-template-columns: 1fr; }
+  .exp-table { font-size: 11.5px; }
+  .exp-table th, .exp-table td { padding: 5px 5px; }
 }

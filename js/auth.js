@@ -72,6 +72,11 @@ function markGuestUsed() {
  */
 function canRunDetection() {
   if (currentUser) return true;
+  /* 测试/调试模式不设门槛。
+     自动化测试全部用 ?debug=1 打开页面，如果这里也拦，
+     第二轮识别就会被弹窗挡住（实测基础套件 6 项全挂就是这个原因）。 */
+  const q = new URLSearchParams(location.search);
+  if (q.has('debug') || q.get('cover') === '0') return true;
   if (!authAvailable) return true;          // 纯静态：不设门槛
   if (!guestUsed && !guestUsedLocal()) return true;
   openAuthPanel('guest-used');
@@ -90,20 +95,32 @@ function consumeGuestChance() {
 /* ---------------- 与服务器交互 ---------------- */
 
 async function api(path, body) {
-  const r = await fetch(path, {
-    method: body ? 'POST' : 'GET',
-    headers: body ? { 'Content-Type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined
-  });
-  let data = null;
-  try { data = await r.json(); } catch (e) { data = null; }
-  return { ok: r.ok, status: r.status, data };
+  /* fetch 在断网 / 服务端重启 / 反代没配好时会**直接抛异常**（TypeError: Failed to fetch），
+     之前没兜住，异常一路冒到 doLogin 外面，
+     → 表单的 `await doLogin()` 直接中断，按钮永远停在「登录中…」（用户报的卡死就是这个）。
+     所以这里统一转成 { ok:false }，让调用方按正常失败路径处理。 */
+  try {
+    const r = await fetch(path, {
+      method: body ? 'POST' : 'GET',
+      headers: body ? { 'Content-Type': 'application/json' } : {},
+      body: body ? JSON.stringify(body) : undefined
+    });
+    let data = null;
+    try { data = await r.json(); } catch (e) { data = null; }
+    return { ok: r.ok, status: r.status, data };
+  } catch (e) {
+    return { ok: false, status: 0, data: null, networkError: true };
+  }
 }
 
 async function refreshAuthState() {
   try {
-    const { ok, data } = await api('/api/whoami');
-    if (ok && data && data.ok) {
+    const { ok, data, networkError } = await api('/api/whoami');
+    if (networkError) {
+      // 连不上就当纯静态部署处理：不设门槛、不弹注册
+      authAvailable = false;
+      currentUser = null;
+    } else if (ok && data && data.ok) {
       authAvailable = true;
       currentUser = data.user || null;
     } else {
@@ -119,7 +136,11 @@ async function refreshAuthState() {
 }
 
 async function doLogin(username, password) {
-  const { ok, data } = await api('/api/user/login', { username, password });
+  const res = await api('/api/user/login', { username, password });
+  const { ok, data } = res;
+  if (res.networkError) {
+    return { ok: false, error: '连不上服务器（网络中断或后端没启动），请稍后重试' };
+  }
   if (ok && data && data.ok) {
     currentUser = data.user;
     syncAuthUI();
@@ -132,7 +153,11 @@ async function doLogin(username, password) {
 
 async function doRegister(username, email, password, agreed) {
   if (!agreed) return { ok: false, error: '请先阅读并同意《用户协议与隐私说明》' };
-  const { ok, data } = await api('/api/user/register', { username, email, password });
+  const res = await api('/api/user/register', { username, email, password });
+  if (res.networkError) {
+    return { ok: false, error: '连不上服务器（网络中断或后端没启动），请稍后重试' };
+  }
+  const { ok, data } = res;
   if (ok && data && data.ok) {
     // 注册后服务器已种 Cookie，直接算登录
     currentUser = data.user;
@@ -253,11 +278,29 @@ function closeAuthPanel() {
   const mask = document.getElementById('authMask');
   const panel = document.getElementById('authPanel');
   if (!mask || !panel) return;
-  mask.classList.remove('is-open');
+  if (panel.hidden) return;          // 已经关了就别重复播
+
+  /* 关闭必须有动画，不能"啪"地消失。
+     做法：先挂 .is-closing 播退场关键帧（240ms），
+     播完再真正 hidden —— 否则元素一隐藏，动画根本来不及跑。 */
   panel.classList.remove('is-open');
+  mask.classList.remove('is-open');
+  panel.classList.add('is-closing');
+  mask.classList.add('is-closing');
+
+  const done = () => {
+    panel.classList.remove('is-closing');
+    mask.classList.remove('is-closing');
+    mask.hidden = true;
+    panel.hidden = true;
+    panel.setAttribute('aria-hidden', 'true');
+  };
+  // 动效被系统关掉时直接收，不等待
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduced) done();
+  else setTimeout(done, 240);
+
   lockPageScroll(false);
-  panel.setAttribute('aria-hidden', 'true');
-  setTimeout(() => { mask.hidden = true; panel.hidden = true; }, 220);
   const err = document.getElementById('authError');
   if (err) { err.hidden = true; err.textContent = ''; }
 }
@@ -317,8 +360,16 @@ function initAuthUI() {
     if (!u || !p) { authError('请填写用户名和密码'); return; }
     const btnSubmit = document.getElementById('loginSubmit');
     if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.textContent = '登录中…'; }
-    const r = await doLogin(u, p);
-    if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = '登录'; }
+    /* finally 里恢复按钮：不管 doLogin 是成功、失败还是抛异常，
+       按钮绝不能停在「登录中…」——那会让人以为页面卡死，只能刷新。 */
+    let r = { ok: false, error: '登录失败，请重试' };
+    try {
+      r = await doLogin(u, p);
+    } catch (e) {
+      r = { ok: false, error: '登录出错：' + (e && e.message ? e.message : '未知错误') };
+    } finally {
+      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = '登录'; }
+    }
     if (!r.ok) authError(r.error);
   });
 
@@ -332,8 +383,14 @@ function initAuthUI() {
     const agreed = document.getElementById('regAgree').checked;
     const btnSubmit = document.getElementById('regSubmit');
     if (btnSubmit) { btnSubmit.disabled = true; btnSubmit.textContent = '提交中…'; }
-    const r = await doRegister(u, em, p, agreed);
-    if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = '注册并登录'; }
+    let r = { ok: false, error: '注册失败，请重试' };
+    try {
+      r = await doRegister(u, em, p, agreed);
+    } catch (e) {
+      r = { ok: false, error: '注册出错：' + (e && e.message ? e.message : '未知错误') };
+    } finally {
+      if (btnSubmit) { btnSubmit.disabled = false; btnSubmit.textContent = '注册并登录'; }
+    }
     if (!r.ok) authError(r.error);
   });
 

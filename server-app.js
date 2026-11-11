@@ -40,7 +40,7 @@ const DATA_DIR  = path.join(ROOT, 'data');
 const DB_FILE   = path.join(DATA_DIR, 'app.db');
 const AUTH_FILE = path.join(DATA_DIR, 'admin.json');
 const SECRET_FILE = path.join(DATA_DIR, 'secret.json');
-const VERSION = '1.7.2';
+const VERSION = '1.8.0';
 
 const DEFAULT_ADMIN_USER = 'admin';
 const DEFAULT_ADMIN_PASS = 'admin123';   // 首次启动写入；请在管理台里改掉
@@ -191,6 +191,8 @@ const SETTING_SPEC = {
   uncertainThreshold: { min: 0.00, max: 0.90 },
   cameraInterval:     { min: 200,  max: 1000 }
 };
+/* 主题色是字符串，单独一个白名单（v1.7.3） */
+const THEME_WHITELIST = ['default', 'sunflower', 'ocean', 'sakura'];
 const SETTINGS_MAX_ROWS = 20000;      // 防刷：超过就丢最旧的
 
 /* 用户登录态有效期（7 天，比管理员长——普通用户使用周期更长） */
@@ -539,6 +541,11 @@ function cleanSettingsPayload(raw) {
     if (!isFinite(v)) continue;
     v = Math.min(spec.max, Math.max(spec.min, v));
     out[key] = Math.round(v * 1000) / 1000;
+  }
+  // 主题是字符串：只收白名单里的值，别的一律丢掉
+  if (raw.theme !== undefined) {
+    const th = String(raw.theme);
+    if (THEME_WHITELIST.indexOf(th) >= 0) out.theme = th;
   }
   return Object.keys(out).length ? out : null;
 }

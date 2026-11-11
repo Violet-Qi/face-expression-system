@@ -4,8 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>千颜万花 · Web 人脸表情识别</title>
-  <link rel="icon" type="image/svg+xml" href="assets/logo.svg?v=1.7.2">
-  <link rel="stylesheet" href="css/style.css?v=1.7.2">
+  <meta name="theme-color" content="#f4f6f8">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg?v=1.8.0">
+  <link rel="stylesheet" href="css/style.css?v=1.8.0">
 </head>
 <body class="fx-anim">
 
@@ -95,7 +96,7 @@
         </h1>
       </div>
       <p class="subtitle">Web 人脸表情识别</p>
-      <p class="page-meta">v1.7.2　·　最后更新 2026-11　·　全部计算在浏览器本地完成</p>
+      <p class="page-meta">v1.8.0　·　最后更新 2026-11　·　全部计算在浏览器本地完成</p>
     </div>
     <div class="header-actions">
       <button type="button" id="authBtn" class="settings-btn auth-btn" aria-label="登录或注册">
@@ -433,6 +434,26 @@
     <div class="drawer-body">
       <p id="settingsToast" class="drawer-toast" hidden></p>
 
+      <!-- 主题色 -->
+      <section class="set-group">
+        <h3>主题色</h3>
+        <p class="set-desc">只换颜色，不改布局与字号。选择会保存在本机并同步到你的账号。</p>
+        <div class="theme-row">
+          <button type="button" class="theme-chip" data-theme="default">
+            <span class="sw sw-default"></span>默认橙
+          </button>
+          <button type="button" class="theme-chip" data-theme="sunflower">
+            <span class="sw sw-sunflower"></span>向日葵黄
+          </button>
+          <button type="button" class="theme-chip" data-theme="ocean">
+            <span class="sw sw-ocean"></span>海洋蓝
+          </button>
+          <button type="button" class="theme-chip" data-theme="sakura">
+            <span class="sw sw-sakura"></span>樱花粉
+          </button>
+        </div>
+      </section>
+
       <!-- 判定偏好 -->
       <section class="set-group">
         <h3>判定偏好</h3>
@@ -477,6 +498,42 @@
         </div>
       </section>
 
+      <!-- 诊断信息 -->
+      <section class="set-group">
+        <h3>诊断信息</h3>
+        <p class="set-desc">这些数字实时反映当前运行状态，可用来确认计算确实发生在你的浏览器里。</p>
+        <div class="diag-grid">
+          <div class="diag-item"><span>运行后端</span><b id="diagBackend">—</b></div>
+          <div class="diag-item"><span>模型状态</span><b id="diagModels">—</b></div>
+          <div class="diag-item"><span>检测输入尺寸</span><b id="diagInput">—</b></div>
+          <div class="diag-item"><span>当前检测阈值</span><b id="diagThreshold">—</b></div>
+          <div class="diag-item"><span>上次识别耗时</span><b id="diagCost">—</b></div>
+          <div class="diag-item"><span>上次检出人脸</span><b id="diagFaces">—</b></div>
+          <div class="diag-item"><span>图片尺寸</span><b id="diagImage">—</b></div>
+          <div class="diag-item"><span>本机编号</span><b id="diagDevice">—</b></div>
+        </div>
+        <div id="diagModelList" class="diag-dots"></div>
+        <div class="set-actions" style="margin-top:12px">
+          <button type="button" id="diagRefresh" class="set-btn set-btn-ghost">刷新</button>
+          <span class="diag-env" id="diagEnv">—</span>
+        </div>
+      </section>
+
+      <!-- 阈值对比实验 -->
+      <section class="set-group">
+        <h3>阈值对比实验</h3>
+        <p class="set-desc">对当前图片用 0.30 / 0.50 / 0.70 三档检测阈值各跑一遍，看检出数怎么变。<b>调低阈值能检出更多小脸，但也会把背景认成脸</b>——这张表就是把取舍量化出来。</p>
+        <div class="set-actions">
+          <button type="button" id="expRun" class="set-btn">开始实验</button>
+          <label class="exp-truth">
+            真实人脸数
+            <input type="number" id="expTruth" min="0" max="100" step="1" placeholder="选填">
+          </label>
+        </div>
+        <p id="expMsg" class="set-status" hidden></p>
+        <div id="expResult" class="exp-box"></div>
+      </section>
+
       <!-- 数据说明 -->
       <section class="set-group">
         <h3>你的设置存在哪里</h3>
@@ -497,25 +554,26 @@
   </footer>
 
   <!-- face-api.js 主库（已内置 TensorFlow.js，无需联网） -->
-  <script src="lib/face-api.js?v=1.7.2"></script>
+  <script src="lib/face-api.js?v=1.8.0"></script>
 
   <!-- 业务代码按职责拆成 10 个文件。
        顺序有讲究：config 提供全局配置与状态，其余文件都要用它；
        main.js 必须最后 —— 它会在加载时"立即"绑定事件，
        所以要保证前面所有文件里的函数都已经定义好了。
        详见 代码导读.md -->
-  <script src="js/config.js?v=1.7.2"></script>
-<script src="js/auth.js?v=1.7.2"></script>
-<script src="js/settings.js?v=1.7.2"></script>
-  <script src="js/models.js?v=1.7.2"></script>
-  <script src="js/render.js?v=1.7.2"></script>
-  <script src="js/report.js?v=1.7.2"></script>
-  <script src="js/image-select.js?v=1.7.2"></script>
-  <script src="js/recognize.js?v=1.7.2"></script>
-  <script src="js/camera.js?v=1.7.2"></script>
-  <script src="js/video.js?v=1.7.2"></script>
-  <script src="js/stats-trend.js?v=1.7.2"></script>
-  <script src="js/grouping.js?v=1.7.2"></script>
-  <script src="js/main.js?v=1.7.2"></script>
+  <script src="js/config.js?v=1.8.0"></script>
+<script src="js/auth.js?v=1.8.0"></script>
+<script src="js/settings.js?v=1.8.0"></script>
+<script src="js/diagnostics.js?v=1.8.0"></script>
+  <script src="js/models.js?v=1.8.0"></script>
+  <script src="js/render.js?v=1.8.0"></script>
+  <script src="js/report.js?v=1.8.0"></script>
+  <script src="js/image-select.js?v=1.8.0"></script>
+  <script src="js/recognize.js?v=1.8.0"></script>
+  <script src="js/camera.js?v=1.8.0"></script>
+  <script src="js/video.js?v=1.8.0"></script>
+  <script src="js/stats-trend.js?v=1.8.0"></script>
+  <script src="js/grouping.js?v=1.8.0"></script>
+  <script src="js/main.js?v=1.8.0"></script>
 </body>
 </html>
