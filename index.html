@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>千颜万花 · Web 人脸表情识别</title>
   <meta name="theme-color" content="#f4f6f8">
-  <link rel="icon" type="image/svg+xml" href="assets/logo.svg?v=1.8.2">
-  <link rel="stylesheet" href="css/style.css?v=1.8.2">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg?v=1.9.0">
+  <link rel="stylesheet" href="css/style.css?v=1.9.0">
 </head>
 <body class="fx-anim">
 
@@ -96,9 +96,21 @@
         </h1>
       </div>
       <p class="subtitle">Web 人脸表情识别</p>
-      <p class="page-meta">v1.8.2　·　最后更新 2026-11　·　全部计算在浏览器本地完成</p>
+      <p class="page-meta">v1.9.0　·　最后更新 2026-11　·　全部计算在浏览器本地完成</p>
     </div>
     <div class="header-actions">
+      <!-- 检测精度档位：常驻下拉，像 DSH 的模型选择器 -->
+      <div class="preset-picker" id="presetPicker">
+        <button type="button" id="presetPickerBtn" class="settings-btn preset-picker-btn"
+                aria-haspopup="listbox" aria-expanded="false" aria-label="切换检测精度">
+          <span class="preset-picker-ico" id="presetPickerIco">⚡</span>
+          <span class="preset-picker-txt" id="presetPickerTxt">速度优先</span>
+          <span class="preset-picker-caret" aria-hidden="true">▾</span>
+        </button>
+        <div class="preset-menu" id="presetMenu" hidden role="listbox" aria-label="检测精度选项">
+          <!-- 由 model-registry.js 动态生成 -->
+        </div>
+      </div>
       <button type="button" id="analyzeBtn" class="settings-btn analyze-btn" aria-label="打开诊断与实验">
         <span class="settings-btn-ico">📊</span><span class="analyze-btn-txt">分析</span>
       </button>
@@ -380,6 +392,7 @@
         <div class="diag-item"><span>运行后端</span><b id="diagBackend">—</b></div>
         <div class="diag-item"><span>模型状态</span><b id="diagModels">—</b></div>
         <div class="diag-item"><span>检测精度档</span><b id="diagPreset">—</b></div>
+        <div class="diag-item"><span>表情模型</span><b id="diagExprEngine">—</b></div>
         <div class="diag-item"><span>检测输入尺寸</span><b id="diagInput">—</b></div>
         <div class="diag-item"><span>当前检测阈值</span><b id="diagThreshold">—</b></div>
         <div class="diag-item"><span>上次识别耗时</span><b id="diagCost">—</b></div>
@@ -573,6 +586,17 @@
           <input type="range" id="setInterval" min="200" max="1000" step="50" value="400">
           <small>间隔越小框跟得越紧、越费 CPU；手机建议 500 ms 以上。</small>
         </label>
+        <label class="set-row" for="setSmooth">
+          <span class="set-label">多帧平滑<em id="setSmoothVal">0.40</em></span>
+          <input type="range" id="setSmooth" min="0" max="1" step="0.05" value="0.4">
+          <small>压掉逐帧抖动：越大越跟随新帧，<b>0 = 关闭</b>。关掉后标签会跳得更频繁。</small>
+        </label>
+
+        <label class="set-row" for="setHysteresis">
+          <span class="set-label">标签稳定度<em id="setHysteresisVal">2 帧</em></span>
+          <input type="range" id="setHysteresis" min="1" max="6" step="1" value="2">
+          <small>新表情要连续赢几帧才切换。调高更稳但反应慢，<b>1 = 立即切换</b>。</small>
+        </label>
       </section>
 
       <!-- 跨设备同步 -->
@@ -616,27 +640,29 @@
   </footer>
 
   <!-- face-api.js 主库（已内置 TensorFlow.js，无需联网） -->
-  <script src="lib/face-api.js?v=1.8.2"></script>
+  <script src="lib/face-api.js?v=1.9.0"></script>
 
   <!-- 业务代码按职责拆成 10 个文件。
        顺序有讲究：config 提供全局配置与状态，其余文件都要用它；
        main.js 必须最后 —— 它会在加载时"立即"绑定事件，
        所以要保证前面所有文件里的函数都已经定义好了。
        详见 代码导读.md -->
-  <script src="js/config.js?v=1.8.2"></script>
-<script src="js/model-registry.js?v=1.8.2"></script>
-<script src="js/auth.js?v=1.8.2"></script>
-<script src="js/settings.js?v=1.8.2"></script>
-<script src="js/diagnostics.js?v=1.8.2"></script>
-  <script src="js/models.js?v=1.8.2"></script>
-  <script src="js/render.js?v=1.8.2"></script>
-  <script src="js/report.js?v=1.8.2"></script>
-  <script src="js/image-select.js?v=1.8.2"></script>
-  <script src="js/recognize.js?v=1.8.2"></script>
-  <script src="js/camera.js?v=1.8.2"></script>
-  <script src="js/video.js?v=1.8.2"></script>
-  <script src="js/stats-trend.js?v=1.8.2"></script>
-  <script src="js/grouping.js?v=1.8.2"></script>
-  <script src="js/main.js?v=1.8.2"></script>
+  <script src="js/config.js?v=1.9.0"></script>
+<script src="js/smoothing.js?v=1.9.0"></script>
+<script src="js/model-registry.js?v=1.9.0"></script>
+<script src="js/expression-engine.js?v=1.9.0"></script>
+<script src="js/auth.js?v=1.9.0"></script>
+<script src="js/settings.js?v=1.9.0"></script>
+<script src="js/diagnostics.js?v=1.9.0"></script>
+  <script src="js/models.js?v=1.9.0"></script>
+  <script src="js/render.js?v=1.9.0"></script>
+  <script src="js/report.js?v=1.9.0"></script>
+  <script src="js/image-select.js?v=1.9.0"></script>
+  <script src="js/recognize.js?v=1.9.0"></script>
+  <script src="js/camera.js?v=1.9.0"></script>
+  <script src="js/video.js?v=1.9.0"></script>
+  <script src="js/stats-trend.js?v=1.9.0"></script>
+  <script src="js/grouping.js?v=1.9.0"></script>
+  <script src="js/main.js?v=1.9.0"></script>
 </body>
 </html>

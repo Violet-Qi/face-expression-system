@@ -118,6 +118,16 @@ async function recognizeCurrentImage(draw) {
     .withFaceExpressions();               // 逐张人脸做表情分类
   if (useGroup) chain = chain.withFaceDescriptors();   // 计算人脸特征向量（用于分组）
   const results = await chain;
+
+  /* 增强表情引擎：若用户选了 FERPlus，就用它覆盖 face-api 的表情结果。
+     上层（渲染/统计/平滑）读的都是 res.expressions，所以这里改完就够了。 */
+  if (curSettings().expressionEngine === 'ferplus' && results.length) {
+    try {
+      const src = (typeof resultImg !== 'undefined' && resultImg) ? resultImg : canvas;
+      const n = await applyEnhanceExpressions(results, src);
+      if (!n) console.warn('[增强引擎] 未能覆盖任何表情，可能是模型未就绪');
+    } catch (e) { console.warn('[增强引擎] 覆盖失败', e); }
+  }
   const costMs = Math.round(performance.now() - t0);
   lastInfoCostMs = costMs;
 

@@ -160,6 +160,8 @@ async function analyzeVideo() {
   const tStarted = performance.now();
 
   videoAnalyzing = true;
+
+  if (typeof resetSmoothing === 'function') resetSmoothing('vid:');
   videoAbortAt = 0;
   // 分析真的跑起来了才扣游客机会
   if (typeof consumeGuestChance === 'function') consumeGuestChance();
@@ -195,6 +197,10 @@ async function analyzeVideo() {
       let results = [];
       try {
         results = await faceapi.detectAllFaces(videoFile, options).withFaceExpressions();
+        /* 增强表情引擎：选了 FERPlus 就用它覆盖（视频帧数多，会明显变慢，属预期） */
+        if (typeof curSettings === "function" && curSettings().expressionEngine === "ferplus" && results.length) {
+          try { await applyEnhanceExpressions(results, videoFile); } catch (e) { /* 单帧失败跳过 */ }
+        }
       } catch (err) {
         console.warn('[视频分析] 第 ' + i + ' 帧识别失败，跳过', err);
       }
@@ -295,7 +301,12 @@ function drawVideoFrameResults(results) {
   const scale = dispW ? (videoOverlay.width / dispW) : 1;
 
   results.forEach((res, i) => {
-    const top = topExpression(res.expressions);
+    /* 只平滑「画面上的标签」，**不动统计**：
+       统计要的是真实分布，跨帧平滑会让相邻帧相关，分布就偏了。 */
+    const smoothed = (typeof smoothExpressions === 'function')
+      ? smoothExpressions('vid:' + i, res.expressions)
+      : res.expressions;
+    const top = topExpression(smoothed);
     if (maskEnabled) mosaicFaceRect(ctx, videoFile, res.detection.box);
     drawBox(ctx, res.detection.box, faceLabel(i, top, -1), scale);
   });

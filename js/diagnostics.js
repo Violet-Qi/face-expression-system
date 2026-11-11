@@ -46,6 +46,7 @@ function collectDiagnostics() {
   return {
     backend,
     presetName: (typeof currentPresetName === 'function') ? currentPresetName() : '—',
+    exprEngine: (typeof currentExpressionEngineName === 'function') ? currentExpressionEngineName() : '—',
     presetKey: (typeof activePreset !== 'undefined') ? activePreset : '—',
     ssdReady: (typeof ssdReady !== 'undefined') ? ssdReady : false,
     modelsLoaded,
@@ -77,6 +78,7 @@ function renderDiagPanel() {
   set('diagFaces', d.lastFaces ? (d.lastFaces + ' 张') : '—');
   set('diagImage', d.imageSize);
   set('diagPreset', d.presetName + (d.presetKey === 'speed' ? '' : '（SSD）'));
+  set('diagExprEngine', d.exprEngine);
   set('diagDevice', d.deviceId);
   set('diagEnv', d.ua + ' · DPR ' + d.dpr);
 

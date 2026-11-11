@@ -40,7 +40,7 @@ const DATA_DIR  = path.join(ROOT, 'data');
 const DB_FILE   = path.join(DATA_DIR, 'app.db');
 const AUTH_FILE = path.join(DATA_DIR, 'admin.json');
 const SECRET_FILE = path.join(DATA_DIR, 'secret.json');
-const VERSION = '1.8.2';
+const VERSION = '1.9.0';
 
 const DEFAULT_ADMIN_USER = 'admin';
 const DEFAULT_ADMIN_PASS = 'admin123';   // 首次启动写入；请在管理台里改掉
@@ -195,6 +195,8 @@ const SETTING_SPEC = {
 const THEME_WHITELIST = ['default', 'sunflower', 'ocean', 'sakura'];
 /* 检测精度档位的白名单（v1.8.1）。前端存在 localStorage，也要能同步到账号。 */
 const PRESET_WHITELIST = ['speed', 'balanced', 'accurate'];
+/* 表情引擎白名单（v1.9.0）：faceapi = 内置，ferplus = 增强（仅电脑） */
+const EXPR_ENGINE_WHITELIST = ['faceapi', 'ferplus'];
 const SETTINGS_MAX_ROWS = 20000;      // 防刷：超过就丢最旧的
 
 /* 用户登录态有效期（7 天，比管理员长——普通用户使用周期更长） */
@@ -552,6 +554,10 @@ function cleanSettingsPayload(raw) {
   if (raw.detectPreset !== undefined) {
     const ps = String(raw.detectPreset);
     if (PRESET_WHITELIST.indexOf(ps) >= 0) out.detectPreset = ps;
+  }
+  if (raw.expressionEngine !== undefined) {
+    const ee = String(raw.expressionEngine);
+    if (EXPR_ENGINE_WHITELIST.indexOf(ee) >= 0) out.expressionEngine = ee;
   }
   return Object.keys(out).length ? out : null;
 }

@@ -33,14 +33,19 @@ const DEFAULT_SETTINGS = {
   uncertainThreshold: 0.00,  // top1 低于它显示"不确定"，0 = 关闭
   cameraInterval: 400,       // 摄像头检测间隔(ms) 200~1000
   theme: 'default',          // 主题色（字符串，不走数值夹紧）
-  detectPreset: 'speed'      // 检测器档位：speed / balanced / accurate
+  detectPreset: 'speed',     // 检测器档位：speed / balanced / accurate
+  smoothAlpha: 0.40,         // 多帧平滑强度：越大越跟随新帧（0 = 关闭）
+  smoothHysteresis: 2,       // 标签切换要连续赢几次
+  expressionEngine: 'faceapi'  // 表情引擎：faceapi（内置）/ ferplus（增强，仅电脑）
 };
 
 /** 参数范围（滑块和校验共用） */
 const SETTINGS_RANGE = {
   detectThreshold:    { min: 0.30, max: 0.80, step: 0.01, fix: 2 },
   uncertainThreshold: { min: 0.00, max: 0.90, step: 0.05, fix: 2 },
-  cameraInterval:     { min: 200,  max: 1000, step: 50,  fix: 0 }
+  cameraInterval:     { min: 200,  max: 1000, step: 50,  fix: 0 },
+  smoothAlpha:        { min: 0.00, max: 1.00, step: 0.05, fix: 2 },
+  smoothHysteresis:   { min: 1,    max: 6,    step: 1,    fix: 0 }
 };
 
 /* 当前生效的设置。其他模块**只读**这个对象（用 curSettings()） */
@@ -85,6 +90,10 @@ function sanitizeSettings(raw) {
       out.theme = THEMES.indexOf(String(raw.theme)) >= 0 ? String(raw.theme) : 'default';
     } else if (k === 'detectPreset') {
       out.detectPreset = DETECT_PRESET_KEYS.indexOf(String(raw.detectPreset)) >= 0 ? String(raw.detectPreset) : 'speed';
+    }
+    else if (k === 'expressionEngine') {
+      const ee = String(raw.expressionEngine);
+      out.expressionEngine = (ee === 'ferplus') ? 'ferplus' : 'faceapi';
     } else {
       out[k] = clampSetting(k, raw[k]);
     }
@@ -342,7 +351,7 @@ function fmtSetting(key) {
   const r = SETTINGS_RANGE[key];
   const v = activeSettings[key];
   if (key === 'cameraInterval') return v + ' ms';
-  return Number(v).toFixed(2);
+  if (key === 'smoothHysteresis') return Number(v) + ' 帧';  if (key === 'smoothAlpha') return Number(v) === 0 ? '关闭' : Number(v).toFixed(2);  return Number(v).toFixed(2);
 }
 
 /** 抽屉里的数值 / 状态文字同步 */
@@ -350,8 +359,10 @@ function syncDrawerUI() {
   const map = {
     setThreshold: 'detectThreshold',
     setUncertain: 'uncertainThreshold',
-    setInterval: 'cameraInterval'
-  };
+    setInterval: 'cameraInterval',
+      setSmooth: 'smoothAlpha',
+      setHysteresis: 'smoothHysteresis'
+    };
   for (const inputId in map) {
     const key = map[inputId];
     const input = document.getElementById(inputId);
@@ -456,6 +467,195 @@ function setAnaTab(which) {
   if (te) te.classList.toggle('is-active', !isDiag);
 }
 
+/* ---------------- 页头档位下拉（v1.9.0）---------------- */
+
+const PRESET_ICONS = { speed: '⚡', balanced: '⚖️', accurate: '🎯' };
+
+/** 渲染页头下拉里的条目 */
+function renderPresetMenu() {
+  const menu = document.getElementById('presetMenu');
+  if (!menu || typeof MODEL_REGISTRY === 'undefined') return;
+
+  const items = MODEL_REGISTRY.map(p =>
+    '<button type="button" class="preset-menu-item" role="option" data-preset="' + p.key + '">' +
+      '<b>' + (PRESET_ICONS[p.key] || '') + ' ' + p.name + '</b>' +
+      '<span class="pm-check">✓</span>' +
+      '<span class="pm-sub">' + p.desc + '</span>' +
+      '<span class="pm-meta">' +
+        (p.extraMB ? '首次需下载 ' + p.extraMB + ' MB' : '已内置') + ' · ' + p.speedHint +
+      '</span>' +
+    '</button>'
+  ).join('');
+
+  /* 第二组：表情引擎。检测器决定"找不找得到脸"，表情引擎决定"判得准不准"，是两件事。 */
+  const curEngine = curSettings().expressionEngine || 'faceapi';
+  const engineItems = [
+    { key: 'faceapi', name: '快速表情模型', sub: 'face-api 自带，322 KB，随页面加载',
+      meta: '所有设备可用 · 速度最快' },
+    { key: 'ferplus', name: '增强表情模型', sub: 'FERPlus 训练的 CNN，18.4 MB',
+      meta: '仅电脑可用 · 首次需下载 · 明显变慢' }
+  ].map(e =>
+    '<button type="button" class="preset-menu-item" role="option" data-engine="' + e.key + '">' +
+      '<b>' + e.name + '</b>' +
+      '<span class="pm-check">✓</span>' +
+      '<span class="pm-sub">' + e.sub + '</span>' +
+      '<span class="pm-meta">' + e.meta + '</span>' +
+    '</button>'
+  ).join('');
+
+  menu.innerHTML =
+    '<div class="pm-group-title">检测器</div>' + items +
+    '<div class="preset-menu-sep"></div>' +
+    '<div class="pm-group-title">表情模型</div>' + engineItems +
+    '<div class="preset-menu-sep"></div>' +
+    '<button type="button" class="preset-menu-more" id="presetMenuMore">查看说明与对比 ›</button>';
+
+  // 表情引擎：选中态 + 点击切换
+  menu.querySelectorAll('[data-engine]').forEach(b => {
+    b.classList.toggle('is-active', b.getAttribute('data-engine') === curEngine);
+    b.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await switchExpressionEngine(b.getAttribute('data-engine'), b);
+    });
+  });
+  menu.querySelectorAll('.preset-menu-item').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      await switchPresetFromMenu(btn.getAttribute('data-preset'), btn);
+    });
+  });
+  const more = document.getElementById('presetMenuMore');
+  if (more) more.addEventListener('click', (e) => {
+    e.stopPropagation();
+    closePresetMenu();
+    openPresetModal();
+  });
+
+  syncPresetPicker();
+}
+
+/** 下拉里点某一档 */
+async function switchPresetFromMenu(key, btnEl) {
+  if (key === curSettings().detectPreset) { closePresetMenu(); return; }
+
+  const menu = document.getElementById('presetMenu');
+  if (menu) menu.querySelectorAll('.preset-menu-item').forEach(b => b.classList.add('is-busy'));
+  if (btnEl) btnEl.classList.add('is-busy');
+
+  const r = await applyDetectPreset(key);
+
+  if (menu) menu.querySelectorAll('.preset-menu-item').forEach(b => b.classList.remove('is-busy'));
+  if (btnEl) btnEl.classList.remove('is-busy');
+
+  if (!r.ok) { syncPresetPicker(); return; }
+
+  const next = Object.assign({}, activeSettings);
+  next.detectPreset = key;
+  applySettings(next);
+  pushRemoteSettings();
+  if (typeof renderDiagPanel === 'function') renderDiagPanel();
+  closePresetMenu();
+}
+
+/** 切换表情引擎（内置 / 增强） */
+async function switchExpressionEngine(key, btnEl) {
+  if (key === (curSettings().expressionEngine || 'faceapi')) { closePresetMenu(); return; }
+
+  // 增强档：手机上直接拒绝（模型 28 MB，手机跑不动也没必要）
+  if (key === 'ferplus') {
+    const narrow = window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
+    if (narrow) {
+      alert('增强表情模型只在电脑上开放（模型 18 MB，手机加载与推理都太慢）。');
+      return;
+    }
+    if (btnEl) btnEl.classList.add('is-busy');
+    setStatus('正在加载增强表情模型（约 18 MB，首次较慢）…', 'loading');
+    const ok = await ensureEnhanceEngine();
+    if (btnEl) btnEl.classList.remove('is-busy');
+    if (!ok) {
+      setStatus('增强表情模型加载失败，已保持内置模型。', 'error');
+      syncPresetPicker();
+      return;
+    }
+    setStatus('增强表情模型已就绪。', 'ok');
+  }
+
+  const next = Object.assign({}, activeSettings);
+  next.expressionEngine = key;
+  applySettings(next);
+  pushRemoteSettings();
+  if (typeof renderDiagPanel === 'function') renderDiagPanel();
+  closePresetMenu();
+}
+
+/** 切换表情引擎`r`n`r`n/** 同步下拉按钮上的文字与选中态 */
+function syncPresetPicker() {
+  const cur = curSettings().detectPreset;
+  const p = (typeof DETECT_PRESETS !== 'undefined' && DETECT_PRESETS[cur]) ? DETECT_PRESETS[cur] : null;
+  const txt = document.getElementById('presetPickerTxt');
+  const ico = document.getElementById('presetPickerIco');
+  // 引擎是增强档时，在按钮上加个小标记，让人知道当前用的是哪个表情模型
+  const useEnhance = (curSettings().expressionEngine === 'ferplus');
+  if (txt) txt.textContent = (p ? p.name : '速度优先') + (useEnhance ? ' +增强' : '');
+  if (ico) ico.textContent = PRESET_ICONS[cur] || '⚡';
+
+  /* 只处理「检测器」那一组。表情引擎项的选中态单独处理 ——
+     早先这里对所有 .preset-menu-item 都按 data-preset 判定，引擎项没有该属性
+     就被算成"非选中"，把 renderPresetMenu 刚设好的 is-active 抹掉了（实测引擎永远无勾）。 */
+  document.querySelectorAll('.preset-menu-item[data-preset]').forEach(b => {
+    b.classList.toggle('is-active', b.getAttribute('data-preset') === cur);
+  });
+
+  const curEngine = curSettings().expressionEngine || 'faceapi';
+  document.querySelectorAll('.preset-menu-item[data-engine]').forEach(b => {
+    b.classList.toggle('is-active', b.getAttribute('data-engine') === curEngine);
+  });
+
+  const drawerTxt = document.getElementById('presetCurrentText');
+  if (drawerTxt && p) drawerTxt.textContent = p.name;
+}
+
+function openPresetMenu() {
+  const menu = document.getElementById('presetMenu');
+  const btn = document.getElementById('presetPickerBtn');
+  if (!menu || !btn) return;
+  renderPresetMenu();
+  menu.hidden = false;
+
+  /* 小屏用 fixed 定位：top 按按钮底边算，left/right 由 CSS 的 12px 内边距保证不溢出。
+     （用 absolute 的话，页头右边还有三个按钮，菜单会超出左边界——实测跑到 -197px） */
+  if (window.matchMedia && window.matchMedia('(max-width: 760px)').matches) {
+    const r = btn.getBoundingClientRect();
+    menu.style.top = Math.round(r.bottom + 8) + 'px';
+  } else {
+    menu.style.top = '';
+  }
+
+  btn.setAttribute('aria-expanded', 'true');
+  // 菜单高度可能超过剩余空间，允许内部滚动
+  const rect = menu.getBoundingClientRect();
+  if (rect.bottom > window.innerHeight - 8) {
+    menu.style.maxHeight = Math.max(160, window.innerHeight - rect.top - 16) + 'px';
+    menu.style.overflowY = 'auto';
+  } else {
+    menu.style.maxHeight = '';
+    menu.style.overflowY = '';
+  }
+}
+
+function closePresetMenu() {
+  const menu = document.getElementById('presetMenu');
+  const btn = document.getElementById('presetPickerBtn');
+  if (!menu || !btn || menu.hidden) return;
+  menu.hidden = true;
+  btn.setAttribute('aria-expanded', 'false');
+}
+
+function togglePresetMenu() {
+  const menu = document.getElementById('presetMenu');
+  if (!menu) return;
+  if (menu.hidden) openPresetMenu(); else closePresetMenu();
+}
 /** 打开档位弹层 */
 function openPresetModal() {
   const mask = document.getElementById('presetMask');
@@ -497,6 +697,7 @@ function closePresetModal() {
 }
 /** 检测器档位：更新选中态 */
 function syncPresetChips() {
+  if (typeof syncPresetPicker === 'function') syncPresetPicker();
   const cur = curSettings().detectPreset;
   document.querySelectorAll('.preset-chip').forEach(btn => {
     btn.classList.toggle('is-active', btn.getAttribute('data-preset') === cur);
@@ -563,6 +764,7 @@ function toastInDrawer(msg) {
 
 function initSettingsUI() {
   renderPresetChips();
+  renderPresetMenu();
   const btn = document.getElementById('settingsBtn');
   const close = document.getElementById('settingsClose');
   const mask = document.getElementById('settingsMask');
@@ -580,8 +782,10 @@ function initSettingsUI() {
   const bindings = [
     ['setThreshold', 'detectThreshold'],
     ['setUncertain', 'uncertainThreshold'],
-    ['setInterval', 'cameraInterval']
-  ];
+    ['setInterval', 'cameraInterval'],
+      ['setSmooth', 'smoothAlpha'],
+      ['setHysteresis', 'smoothHysteresis']
+    ];
   bindings.forEach(([inputId, key]) => {
     const input = document.getElementById(inputId);
     if (!input) return;
@@ -590,6 +794,7 @@ function initSettingsUI() {
       next[key] = input.value;
       applySettings(next);
       pushRemoteSettings();
+            if ((key === 'smoothAlpha' || key === 'smoothHysteresis') && typeof resetSmoothing === 'function') resetSmoothing();
     });
   });
 
@@ -615,7 +820,22 @@ function initSettingsUI() {
     const m = document.getElementById('presetModal');
     if (e.key === 'Escape' && m && !m.hidden) { e.stopPropagation(); closePresetModal(); }
   }, true);
+  /* 页头档位下拉：只在桌面启用。
+     手机上它被 CSS 隐藏了（页头放不下），用户走「设置 → 检测精度」，
+     所以这里也跳过绑定，免得留一个看不见还能被键盘聚焦的控件。 */
+  const pickerBtn = document.getElementById('presetPickerBtn');
+  const isNarrow = window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
+  if (pickerBtn && !isNarrow) pickerBtn.addEventListener('click', (e) => { e.stopPropagation(); togglePresetMenu(); });
+  document.addEventListener('click', (e) => {
+    const picker = document.getElementById('presetPicker');
+    if (picker && !picker.contains(e.target)) closePresetMenu();
+  });
+  document.addEventListener('keydown', (e) => {
+    const m = document.getElementById('presetMenu');
+    if (e.key === 'Escape' && m && !m.hidden) closePresetMenu();
+  }, true);
 
+  // 分析弹层：设置抽屉两个入口 + 页头「分析」按钮 + 表情区内联入口
   // 分析弹层：设置抽屉两个入口 + 页头「分析」按钮 + 表情区内联入口
   const od = document.getElementById('openDiagBtn');
   if (od) od.addEventListener('click', () => openAnaModal('diag'));

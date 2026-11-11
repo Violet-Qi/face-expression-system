@@ -53,6 +53,7 @@ async function startCamera() {
 
     // 画面元素显示出来、占位提示收起、按钮变成"停止" —— 这些显隐统一交给 renderView
     ui.cameraLive = true;
+    if (typeof resetSmoothing === 'function') resetSmoothing('cam:');
     // 摄像头真的开起来了才算用掉游客机会
     if (typeof consumeGuestChance === 'function') consumeGuestChance();
 
@@ -88,6 +89,7 @@ async function stopCamera() {
 
   // 画面回到占位提示、按钮去掉"停止"样式 —— 统一交给 renderView
   ui.cameraLive = false;
+  if (typeof resetSmoothing === 'function') resetSmoothing('cam:');
 
   detectBtn.disabled = !modelsReady;
 
@@ -141,6 +143,11 @@ async function detectCameraFrame() {
     .detectAllFaces(video, options)
     .withFaceExpressions();
 
+  /* 增强表情引擎：选了 FERPlus 就用它覆盖（仅电脑档） */
+  if (typeof curSettings === "function" && curSettings().expressionEngine === "ferplus" && results.length) {
+    try { await applyEnhanceExpressions(results, video); } catch (e) { /* 单帧失败不影响继续 */ }
+  }
+
   // 叠加层的分辨率 = 摄像头画面原始像素（检测框坐标就是这个坐标系下的）
   if (cameraOverlay.width !== vw || cameraOverlay.height !== vh) {
     cameraOverlay.width  = vw;
@@ -156,7 +163,12 @@ async function detectCameraFrame() {
   const scale = dispW ? (cameraOverlay.width / dispW) : 1;
 
   results.forEach((res, i) => {
-    const top = topExpression(res.expressions);
+    /* 多帧平滑：用历史概率压掉逐帧抖动（见 smoothing.js）。
+       关闭平滑时原样返回，行为与旧版一致。 */
+    const smoothed = (typeof smoothExpressions === 'function')
+      ? smoothExpressions('cam:' + i, res.expressions)
+      : res.expressions;
+    const top = topExpression(smoothed);
 
     // 开了打码就先盖住人脸，再画框和标签
     if (maskEnabled) mosaicFaceRect(ctx, video, res.detection.box);
@@ -209,7 +221,12 @@ function renderCameraInfo(results) {
   }
 
   results.forEach((res, i) => {
-    const top = topExpression(res.expressions);
+    /* 多帧平滑：用历史概率压掉逐帧抖动（见 smoothing.js）。
+       关闭平滑时原样返回，行为与旧版一致。 */
+    const smoothed = (typeof smoothExpressions === 'function')
+      ? smoothExpressions('cam:' + i, res.expressions)
+      : res.expressions;
+    const top = topExpression(smoothed);
     const pct = top.value * 100;
     const row = document.createElement('div');
     row.className = 'face-row';
