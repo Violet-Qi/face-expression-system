@@ -246,9 +246,13 @@ function lockPageScroll(lock) {
   if (lock && isMobile) {
     // 只用 CSS 的 overscroll-behavior 挡住穿透滚动，不动 overflow
     body.classList.add('modal-open-mobile');
+    html.classList.add('modal-open');      // 手机也要让弹层盖过封面
     return;
   }
-  if (!lock) body.classList.remove('modal-open-mobile');
+  if (!lock) {
+    body.classList.remove('modal-open-mobile');
+    html.classList.remove('modal-open');
+  }
 
   if (lock) {
     /* 修：以前给 body 加 paddingRight = 滚动条宽度，会让页面整体左移一下
@@ -259,6 +263,7 @@ function lockPageScroll(lock) {
     html.dataset.prevOverflow = html.style.overflow || '';
     html.dataset.prevPaddingRight = html.style.paddingRight || '';
     html.classList.add('is-scroll-locked');
+    html.classList.add('modal-open');
     html.style.overflow = 'hidden';
 
     // 兜底：不支持 scrollbar-gutter 的浏览器
@@ -270,6 +275,7 @@ function lockPageScroll(lock) {
     }
   } else {
     html.classList.remove('is-scroll-locked');
+    html.classList.remove('modal-open');
     html.style.overflow = html.dataset.prevOverflow || '';
     html.style.paddingRight = html.dataset.prevPaddingRight || '';
     delete html.dataset.prevOverflow;
