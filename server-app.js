@@ -40,7 +40,7 @@ const DATA_DIR  = path.join(ROOT, 'data');
 const DB_FILE   = path.join(DATA_DIR, 'app.db');
 const AUTH_FILE = path.join(DATA_DIR, 'admin.json');
 const SECRET_FILE = path.join(DATA_DIR, 'secret.json');
-const VERSION = '1.9.1';
+const VERSION = '1.9.2';
 
 const DEFAULT_ADMIN_USER = 'admin';
 const DEFAULT_ADMIN_PASS = 'admin123';   // 首次启动写入；请在管理台里改掉
@@ -661,24 +661,52 @@ async function apiUserLogin(req, res) {
   let body;
   try { body = await readBody(req); } catch (e) { return sendJSON(res, 400, { ok: false, error: 'bad json' }); }
 
-  const username = String(body.username || '').trim();
+  /* 用户可能输用户名，也可能输邮箱（这是真实踩过的坑：
+     注册时填的是用户名，但很多人习惯拿邮箱当账号）。
+     所以这里两样都试：先按用户名精确匹配，查不到再按邮箱匹配（不区分大小写）。 */
+  const account = String(body.username || body.account || '').trim();
   const password = String(body.password || '');
-  if (!username || !password) return sendJSON(res, 400, { ok: false, error: '请填写用户名和密码' });
+  if (!account || !password) return sendJSON(res, 400, { ok: false, error: '请填写账号和密码' });
 
-  const row = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
-  const fail = () => sendJSON(res, 401, { ok: false, error: '用户名或密码不正确' });
-  if (!row) return fail();
-  if (row.status !== 'active') return sendJSON(res, 403, { ok: false, error: '该账号已被停用' });
+  let row = db.prepare('SELECT * FROM users WHERE username = ?').get(account);
+
+  if (!row && account.indexOf('@') > 0) {
+    // 看起来像邮箱，按邮箱再查一次。邮箱存的时候统一小写，这里也降一下。
+    row = db.prepare('SELECT * FROM users WHERE LOWER(email) = ?').get(account.toLowerCase());
+  }
+
+  if (!row) {
+    return sendJSON(res, 401, {
+      ok: false,
+      error: '用户名不存在。可用用户名或注册邮箱登录；如果还没注册，请先注册。',
+      code: 'no_such_user'
+    });
+  }
+
+  if (row.status !== 'active') {
+    return sendJSON(res, 403, { ok: false, error: '该账号已被停用，请联系管理员', code: 'disabled' });
+  }
 
   const [salt, hash] = String(row.pass_hash).split(':');
   const calc = hashPassword(password, salt);
-  if (!safeEqualHex(hash, calc.hash)) return fail();
+  if (!safeEqualHex(hash, calc.hash)) {
+    return sendJSON(res, 401, {
+      ok: false,
+      error: '密码不正确（用户名是对的）。忘记密码可让管理员在管理台重置。',
+      code: 'bad_password'
+    });
+  }
 
   db.prepare('UPDATE users SET last_login_at = ? WHERE id = ?').run(Date.now(), row.id);
   const token = makeToken({ uid: row.id, u: 'student:' + row.id });
   res.setHeader('Set-Cookie',
     `fes_user=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(USER_SESSION_TTL_MS / 1000)}`);
-  return sendJSON(res, 200, { ok: true, user: { id: row.id, username: row.username, email: row.email } });
+  return sendJSON(res, 200, {
+    ok: true,
+    user: { id: row.id, username: row.username, email: row.email },
+    // 告诉前端是用哪种方式匹配到的，界面上可以提示"已用邮箱登录"
+    matchedBy: (String(row.username) === account) ? 'username' : 'email'
+  });
 }
 
 /** 学生端登出 */

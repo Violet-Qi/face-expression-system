@@ -554,3 +554,13 @@ window.addEventListener('resize', () => {
     showLogin('连不上后端服务。请用「启动.bat」启动（需要 Node），而不是只开静态服务。');
   }
 })();
+
+/* ---------------- 水波点击反馈 ---------------- */
+(function bootRipple() {
+  if (typeof initRipple !== 'function') return;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initRipple, { once: true });
+  } else {
+    initRipple();
+  }
+})();

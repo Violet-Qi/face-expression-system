@@ -855,3 +855,15 @@ if (new URLSearchParams(location.search).has('debug')) {
     }
   };
 }
+
+/* ---------------- 水波点击反馈 ----------------
+   绑在 document 上做事件委托，所以对动态生成的元素同样生效。
+   放在文件末尾执行：此时 ripple.js 已经加载完毕。 */
+(function bootRipple() {
+  if (typeof initRipple !== 'function') return;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initRipple, { once: true });
+  } else {
+    initRipple();
+  }
+})();

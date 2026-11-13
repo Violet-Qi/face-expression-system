@@ -156,7 +156,7 @@ body {
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: background .15s linear, color .15s linear;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
 }
 
 .mode-btn:hover { color: var(--text); }
@@ -348,7 +348,7 @@ body {
   display: block;
   height: 100%;
   border-radius: 5px;
-  transition: width .25s linear;
+  transition: width .3s cubic-bezier(.4, 0, .2, 1);   /* 进度条：等速为主，末端自然减速 */
 }
 
 .stat-count {
@@ -391,7 +391,7 @@ body {
 .page.is-animating {
   overflow: hidden;
   /* 2026-11-08：跟着"线性动画"统一改成 linear */
-  transition: height 280ms linear,
+  transition: height 280ms var(--ease-out),
               opacity 200ms linear;
 }
 
@@ -500,7 +500,7 @@ body {
   justify-content: center;
   gap: 0;
   padding: 10px;
-  transition: border-color .15s linear, background .15s linear;
+  transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
   overflow: hidden;
 }
 
@@ -547,7 +547,7 @@ body {
   background: #fff;
   color: var(--text);
   cursor: pointer;
-  transition: background .15s linear, border-color .15s linear;
+  transition: background var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
 
 .btn-ghost:hover { background: var(--surface-2); border-color: #c2cad3; }
@@ -827,7 +827,7 @@ body {
   width: 0;
   background: var(--primary);
   border-radius: 3px;
-  transition: width .25s linear;
+  transition: width .3s cubic-bezier(.4, 0, .2, 1);   /* 进度条：等速为主，末端自然减速 */
 }
 /* ---------------- 视频文件识别页 ---------------- */
 .video-bar {
@@ -1013,7 +1013,7 @@ body {
   border: none;
   border-radius: var(--radius);
   cursor: pointer;
-  transition: background .15s linear;
+  transition: background var(--dur-fast) var(--ease-out);
 }
 
 .btn-primary:hover:not(:disabled)  { background: var(--primary-hover); }
@@ -2640,7 +2640,7 @@ html[data-theme="sakura"] .fx-shape {
    ============================================================ */
 
 @keyframes fxPopDown {
-  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1);   animation-timing-function: cubic-bezier(.5, 0, .8, .4); }
   to   { opacity: 0; transform: translate(-50%, -44%) scale(.95); }
 }
 @keyframes fxPopDownSheet {
@@ -3080,7 +3080,7 @@ html[data-theme="sakura"] .fx-shape {
    套到下拉上会把整个菜单平移半个宽高，实测跑到视口外（left:-162）。
    下拉只需要「轻微下滑 + 淡入」。 */
 @keyframes menuDrop {
-  from { opacity: 0; transform: translateY(-6px) scale(.985); }
+  from { opacity: 0; transform: translateY(-6px) scale(.985); animation-timing-function: cubic-bezier(.2, .9, .3, 1); }
   to   { opacity: 1; transform: translateY(0)    scale(1); }
 }
 
@@ -3179,3 +3179,150 @@ html[data-theme="sakura"] .fx-shape {
 
 /* 菜单变宽了（两组内容），桌面 340px */
 .preset-menu { width: 340px; }
+
+/* ============================================================
+   水滴涟漪点击反馈（v1.9.2）
+   ------------------------------------------------------------
+   按下时从点击点扩散一圈水波，像水滴落进水面。
+   中心的计算在 js/ripple.js 里（CSS 拿不到点击坐标）。
+
+   颜色用 currentColor：深底按钮文字白 → 白水波；浅底按钮文字深 → 深水波。
+   这样不用为每个按钮单独配色，也不会在某些按钮上看不见。
+
+   动画分两段感觉：
+     0~15%   快速成形（透明度升到峰值）
+     15~100% 缓慢扩散并淡出（更像水波散开，而不是"啪"一下消失）
+   ============================================================ */
+
+.fx-ripple {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  background: currentColor;
+  opacity: 0;
+  transform: scale(0);
+  will-change: transform, opacity;
+  animation: rippleSpread 560ms cubic-bezier(.22, 1, .36, 1) forwards;
+}
+
+@keyframes rippleSpread {
+  0%   { transform: scale(0);   opacity: .34; animation-timing-function: cubic-bezier(.12, .9, .3, 1); }
+  15%  { transform: scale(.34); opacity: .30; animation-timing-function: cubic-bezier(.3, .8, .5, 1); }
+  60%  { transform: scale(.86); opacity: .12; animation-timing-function: cubic-bezier(.4, 0, .6, 1); }
+  100% { transform: scale(1);   opacity: 0; }
+}
+
+/* 元素内的文字要浮在水波之上，否则水波扫过时字会被盖暗 */
+.btn > *,
+.btn-primary > *,
+.btn-ghost > *,
+.btn-mini > *,
+.mode-btn > *,
+.settings-btn > *,
+.preset-picker-btn > *,
+.preset-chip > *,
+.preset-menu-item > *,
+.preset-menu-more > *,
+.theme-chip > *,
+.auth-submit > *,
+.auth-tab > *,
+.set-btn > *,
+.set-row-btn > *,
+.info-exp-link > *,
+.cover-start > *,
+.face-card > *,
+.tab-btn > *,
+.link-btn > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* 纯文字按钮（没有子元素）直接用文字本身抬层 */
+.btn, .btn-primary, .btn-ghost, .btn-mini, .mode-btn, .settings-btn,
+.preset-picker-btn, .preset-chip, .preset-menu-item, .preset-menu-more,
+.theme-chip, .auth-submit, .auth-tab, .set-btn, .set-row-btn,
+.info-exp-link, .cover-start {
+  position: relative;
+}
+
+/* 尊重系统"减少动态效果"：不生成水波（JS 里也拦了一层） */
+@media (prefers-reduced-motion: reduce) {
+  .fx-ripple { display: none; }
+}
+/* ============================================================
+   交互元素统一非线性缓动（v1.9.2）
+   ------------------------------------------------------------
+   目的：全站所有会"变色/变形/移位"的元素，用的都是同一套缓动，
+        不会再出现某个按钮是线性、另一个是缓动的情况。
+
+   三条缓动的分工（已在 :root 定义）：
+     --ease-out    前快后缓，用于"进入/展开/变亮"
+     --ease-back   轻微过冲（8%），用于"按下弹起/到位感"
+     --ease-press  按下专用，前段极快，用于"立刻响应"
+   ============================================================ */
+
+/* 输入类：边框与阴影的变化用缓动，不要突然跳 */
+.import-textarea,
+.actions input[type="number"],
+.auth-field input,
+.exp-truth input {
+  transition: border-color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out),
+              background-color var(--dur-fast) var(--ease-out);
+}
+
+/* 滑块：拖动手感 */
+input[type="range"] {
+  transition: background var(--dur-fast) var(--ease-out);
+}
+input[type="range"]::-webkit-slider-thumb {
+  transition: transform 160ms var(--ease-back), box-shadow 160ms var(--ease-out);
+}
+input[type="range"]:active::-webkit-slider-thumb {
+  transform: scale(1.12);
+}
+
+/* 复选框与单选：勾选时轻微弹一下 */
+input[type="checkbox"],
+input[type="radio"] {
+  transition: transform 180ms var(--ease-back), accent-color var(--dur-fast) var(--ease-out);
+}
+input[type="checkbox"]:active,
+input[type="radio"]:active {
+  transform: scale(.88);
+}
+
+/* 可点击的行（会话明细、用户列表）：hover 背景渐变而非突变 */
+tbody tr,
+.user-row,
+.session-row {
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+/* 标签页切换：底色与文字颜色一起过渡 */
+.auth-tab,
+.tab-btn,
+.mode-btn {
+  transition: background var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              transform 180ms var(--ease-back);
+}
+
+/* 链接：下划线用渐变出现，不用瞬间出现 */
+a,
+.link-btn {
+  transition: color var(--dur-fast) var(--ease-out),
+              opacity var(--dur-fast) var(--ease-out);
+}
+
+/* 折叠/展开的容器 */
+.group-box,
+.stats-box,
+.trend-box,
+.video-progress {
+  transition: opacity var(--dur) var(--ease-out),
+              max-height var(--dur) var(--ease-out),
+              transform var(--dur) var(--ease-out);
+}

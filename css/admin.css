@@ -415,3 +415,26 @@ form, .login-form { animation: fxInUp 320ms cubic-bezier(.22,1,.36,1) both; }
   color: #fff;
   border-radius: 999px;
 }
+/* 水波点击反馈（与主站同一套，admin 页面不加载 style.css 所以需要单独一份） */
+.fx-ripple {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 0;
+  background: currentColor;
+  opacity: 0;
+  transform: scale(0);
+  will-change: transform, opacity;
+  animation: rippleSpread 560ms cubic-bezier(.22, 1, .36, 1) forwards;
+}
+@keyframes rippleSpread {
+  0%   { transform: scale(0);    opacity: .34; }
+  15%  { transform: scale(.34);  opacity: .30; }
+  60%  { transform: scale(.86);  opacity: .12; }
+  100% { transform: scale(1);    opacity: 0; }
+}
+.btn, .btn-primary, .btn-ghost, .btn-mini, .tab-btn, .link-btn { position: relative; }
+.btn > *, .btn-primary > *, .btn-ghost > *, .btn-mini > *, .tab-btn > *, .link-btn > * {
+  position: relative; z-index: 1;
+}
+@media (prefers-reduced-motion: reduce) { .fx-ripple { display: none; } }

@@ -643,20 +643,50 @@ function openPresetMenu() {
   renderPresetMenu();
   menu.hidden = false;
 
-  /* 小屏用 fixed 定位：top 按按钮底边算，left/right 由 CSS 的 12px 内边距保证不溢出。
-     （用 absolute 的话，页头右边还有三个按钮，菜单会超出左边界——实测跑到 -197px） */
-  if (window.matchMedia && window.matchMedia('(max-width: 760px)').matches) {
+  /* 定位策略（v1.9.2 修正）：
+     手机上页头右侧还有三个按钮，用 absolute + right:0 会把菜单推到屏幕左边外面
+     （实测 left = -162px）。所以窄屏改成 fixed，位置按按钮的矩形自己算，
+     并且保证左右各留 12px 边距。
+
+     桌面仍用 absolute（相对按钮右下角），因为空间充足。 */
+  const isNarrow = window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
+
+  if (isNarrow) {
     const r = btn.getBoundingClientRect();
-    menu.style.top = Math.round(r.bottom + 8) + 'px';
+    const margin = 12;
+    const width = Math.min(window.innerWidth - margin * 2, 340);
+
+    menu.style.position = 'fixed';
+    menu.style.width = width + 'px';
+    menu.style.left = margin + 'px';
+    menu.style.right = 'auto';
+
+    // 垂直：默认贴按钮下方；下方放不下就往上翻
+    const below = Math.round(r.bottom + 8);
+    const estH = Math.min(menu.scrollHeight || 420, window.innerHeight - margin * 2);
+    if (below + estH > window.innerHeight - margin) {
+      const above = Math.round(r.top - 8 - estH);
+      menu.style.top = Math.max(margin, above) + 'px';
+    } else {
+      menu.style.top = below + 'px';
+    }
   } else {
+    menu.style.position = '';
+    menu.style.width = '';
+    menu.style.left = '';
+    menu.style.right = '';
     menu.style.top = '';
   }
 
   btn.setAttribute('aria-expanded', 'true');
-  // 菜单高度可能超过剩余空间，允许内部滚动
+
+  // 高度兜底：无论如何不超过可视区
   const rect = menu.getBoundingClientRect();
   if (rect.bottom > window.innerHeight - 8) {
     menu.style.maxHeight = Math.max(160, window.innerHeight - rect.top - 16) + 'px';
+    menu.style.overflowY = 'auto';
+  } else if (isNarrow) {
+    menu.style.maxHeight = Math.min(rect.height, window.innerHeight - 24) + 'px';
     menu.style.overflowY = 'auto';
   } else {
     menu.style.maxHeight = '';
@@ -670,6 +700,14 @@ function closePresetMenu() {
   if (!menu || !btn || menu.hidden) return;
   menu.hidden = true;
   btn.setAttribute('aria-expanded', 'false');
+  /* 清掉 openPresetMenu 设的内联定位，避免下次在别的尺寸下残留 */
+  menu.style.position = '';
+  menu.style.left = '';
+  menu.style.right = '';
+  menu.style.top = '';
+  menu.style.width = '';
+  menu.style.maxHeight = '';
+  menu.style.overflowY = '';
 }
 
 function togglePresetMenu() {

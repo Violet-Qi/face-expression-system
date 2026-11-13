@@ -145,6 +145,10 @@ async function doLogin(username, password) {
     currentUser = data.user;
     syncAuthUI();
     closeAuthPanel();
+    // 用邮箱匹配到账号时说一句，避免用户以为"我输错了居然还能进"
+    if (data.matchedBy === 'email') {
+      setStatus('已用注册邮箱登录（账号：' + data.user.username + '）。', 'ok');
+    }
     if (typeof onAuthChanged === 'function') onAuthChanged();
     return { ok: true };
   }
