@@ -251,14 +251,27 @@ function lockPageScroll(lock) {
   if (!lock) body.classList.remove('modal-open-mobile');
 
   if (lock) {
-    const sbw = window.innerWidth - html.clientWidth;   // 滚动条宽度（0 表示本来就没滚动条）
+    /* 修：以前给 body 加 paddingRight = 滚动条宽度，会让页面整体左移一下
+       （用户报的"打开弹窗时整页左右平移"）。
+       现在改用 scrollbar-gutter: stable —— 浏览器原生保留滚动条占位，
+       锁定 overflow 时布局宽度不变，页面纹丝不动。
+       对不支持的浏览器，退回"给 html 加 padding、不加给 body"的老办法。 */
     html.dataset.prevOverflow = html.style.overflow || '';
-    body.dataset.prevPadding = body.style.paddingRight || '';
+    html.dataset.prevPaddingRight = html.style.paddingRight || '';
+    html.classList.add('is-scroll-locked');
     html.style.overflow = 'hidden';
-    if (sbw > 0) body.style.paddingRight = sbw + 'px';
+
+    // 兜底：不支持 scrollbar-gutter 的浏览器
+    const supportsGutter = (typeof CSS !== 'undefined' && CSS.supports &&
+                            CSS.supports('scrollbar-gutter', 'stable'));
+    if (!supportsGutter) {
+      const sbw = window.innerWidth - html.clientWidth;
+      if (sbw > 0) html.style.paddingRight = sbw + 'px';
+    }
   } else {
+    html.classList.remove('is-scroll-locked');
     html.style.overflow = html.dataset.prevOverflow || '';
-    body.style.paddingRight = body.dataset.prevPadding || '';
+    html.style.paddingRight = html.dataset.prevPaddingRight || '';
     delete html.dataset.prevOverflow;
     delete body.dataset.prevPadding;
   }

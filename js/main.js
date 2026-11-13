@@ -867,3 +867,12 @@ if (new URLSearchParams(location.search).has('debug')) {
     initRipple();
   }
 })();
+/* ---------------- 更新公告入口 ---------------- */
+(function bootChangelog() {
+  if (typeof initChangelog !== 'function') return;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initChangelog, { once: true });
+  } else {
+    initChangelog();
+  }
+})();

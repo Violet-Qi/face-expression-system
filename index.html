@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>千颜万花 · Web 人脸表情识别</title>
   <meta name="theme-color" content="#f4f6f8">
-  <link rel="icon" type="image/svg+xml" href="assets/logo.svg?v=1.9.2">
-  <link rel="stylesheet" href="css/style.css?v=1.9.2">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg?v=1.9.3">
+  <link rel="stylesheet" href="css/style.css?v=1.9.3">
 </head>
 <body class="fx-anim">
 
@@ -66,6 +66,17 @@
       <button type="button" class="cover-start" id="coverStart" disabled>加载中…</button>
       <p class="cover-hint">图片和视频不会上传，全部在你的浏览器里完成</p>
     </div>
+    <!-- 右下角：更新公告入口（不主动弹，点了才看） -->
+    <button type="button" class="cover-changelog-btn" id="changelogBtn" aria-haspopup="dialog">
+      <span class="cover-changelog-ico" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h9L20 9.5v9A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5Z"/>
+          <path d="M14 4v6h6"/>
+          <path d="M8 13h8M8 16.5h5"/>
+        </svg>
+      </span>
+      <span class="cover-changelog-txt">更新公告</span>
+    </button>
   </div>
 
   <!-- ============ 页头 ============ -->
@@ -96,7 +107,7 @@
         </h1>
       </div>
       <p class="subtitle">Web 人脸表情识别</p>
-      <p class="page-meta">v1.9.2　·　最后更新 2026-11　·　全部计算在浏览器本地完成</p>
+      <p class="page-meta">v1.9.3　·　最后更新 2026-11　·　全部计算在浏览器本地完成</p>
     </div>
     <div class="header-actions">
       <!-- 检测精度档位：常驻下拉，像 DSH 的模型选择器 -->
@@ -371,6 +382,18 @@
     <span class="mask-opt-hint">只上报表情计数、人脸数与耗时，<strong>不含图片</strong>。关掉后一条都不会发。</span>
   </div>
 
+  <!-- ============ 更新公告弹层 ============ -->
+  <div id="changelogMask" class="drawer-mask" hidden></div>
+  <div id="changelogModal" class="changelog-modal" hidden aria-hidden="true" role="dialog" aria-label="更新公告">
+    <div class="preset-modal-head">
+      <h2>更新公告</h2>
+      <button type="button" id="changelogClose" class="drawer-close" aria-label="关闭">×</button>
+    </div>
+    <div class="changelog-body" id="changelogBody">
+      <p class="changelog-loading">正在加载…</p>
+    </div>
+  </div>
+
   <!-- ============ 主按钮 ============ -->
   <!-- ============ 分析弹层（诊断 / 阈值实验）============ -->
   <div id="anaMask" class="drawer-mask" hidden></div>
@@ -532,36 +555,8 @@
         </div>
       </section>
 
-      <!-- 检测精度（入口，具体选择在独立弹层） -->
-      <section class="set-group">
-        <h3>检测精度</h3>
-        <button type="button" class="set-row-btn" id="openPresetBtn">
-          <span class="set-row-btn-main">
-            <b>模型档位</b>
-            <span id="presetCurrentText">速度优先</span>
-          </span>
-          <span class="set-row-btn-arrow">›</span>
-        </button>
-      </section>
+      <!-- （检测精度与分析工具的入口已移到页头，这里不再重复） -->
 
-      <!-- 分析工具入口（具体内容在独立弹层） -->
-      <section class="set-group">
-        <h3>分析工具</h3>
-        <button type="button" class="set-row-btn" id="openDiagBtn">
-          <span class="set-row-btn-main">
-            <b>诊断信息</b>
-            <span>运行后端 · 模型状态 · 耗时</span>
-          </span>
-          <span class="set-row-btn-arrow">›</span>
-        </button>
-        <button type="button" class="set-row-btn" id="openExpBtn" style="margin-top:8px">
-          <span class="set-row-btn-main">
-            <b>阈值对比实验</b>
-            <span>三档阈值下的检出差异</span>
-          </span>
-          <span class="set-row-btn-arrow">›</span>
-        </button>
-      </section>
 
       <!-- 判定偏好 -->
       <section class="set-group">
@@ -639,30 +634,31 @@
   </footer>
 
   <!-- face-api.js 主库（已内置 TensorFlow.js，无需联网） -->
-  <script src="lib/face-api.js?v=1.9.2"></script>
+  <script src="lib/face-api.js?v=1.9.3"></script>
 
   <!-- 业务代码按职责拆成 10 个文件。
        顺序有讲究：config 提供全局配置与状态，其余文件都要用它；
        main.js 必须最后 —— 它会在加载时"立即"绑定事件，
        所以要保证前面所有文件里的函数都已经定义好了。
        详见 代码导读.md -->
-  <script src="js/config.js?v=1.9.2"></script>
-<script src="js/smoothing.js?v=1.9.2"></script>
-<script src="js/ripple.js?v=1.9.2"></script>
-<script src="js/model-registry.js?v=1.9.2"></script>
-<script src="js/expression-engine.js?v=1.9.2"></script>
-<script src="js/auth.js?v=1.9.2"></script>
-<script src="js/settings.js?v=1.9.2"></script>
-<script src="js/diagnostics.js?v=1.9.2"></script>
-  <script src="js/models.js?v=1.9.2"></script>
-  <script src="js/render.js?v=1.9.2"></script>
-  <script src="js/report.js?v=1.9.2"></script>
-  <script src="js/image-select.js?v=1.9.2"></script>
-  <script src="js/recognize.js?v=1.9.2"></script>
-  <script src="js/camera.js?v=1.9.2"></script>
-  <script src="js/video.js?v=1.9.2"></script>
-  <script src="js/stats-trend.js?v=1.9.2"></script>
-  <script src="js/grouping.js?v=1.9.2"></script>
-  <script src="js/main.js?v=1.9.2"></script>
+  <script src="js/config.js?v=1.9.3"></script>
+<script src="js/smoothing.js?v=1.9.3"></script>
+<script src="js/ripple.js?v=1.9.3"></script>
+<script src="js/changelog.js?v=1.9.3"></script>
+<script src="js/model-registry.js?v=1.9.3"></script>
+<script src="js/expression-engine.js?v=1.9.3"></script>
+<script src="js/auth.js?v=1.9.3"></script>
+<script src="js/settings.js?v=1.9.3"></script>
+<script src="js/diagnostics.js?v=1.9.3"></script>
+  <script src="js/models.js?v=1.9.3"></script>
+  <script src="js/render.js?v=1.9.3"></script>
+  <script src="js/report.js?v=1.9.3"></script>
+  <script src="js/image-select.js?v=1.9.3"></script>
+  <script src="js/recognize.js?v=1.9.3"></script>
+  <script src="js/camera.js?v=1.9.3"></script>
+  <script src="js/video.js?v=1.9.3"></script>
+  <script src="js/stats-trend.js?v=1.9.3"></script>
+  <script src="js/grouping.js?v=1.9.3"></script>
+  <script src="js/main.js?v=1.9.3"></script>
 </body>
 </html>

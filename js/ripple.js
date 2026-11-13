@@ -47,18 +47,22 @@ const RIPPLE_SELECTOR = [
   '.link-btn'
 ].join(',');
 
-/** 让容器能容纳水波（不裁切就会溢出到外面） */
+/**
+ * 让容器能容纳水波。
+ *
+ * ⚠️ 这里**故意不再改内联样式**。曾经的做法是点击时临时给元素加
+ * `position:relative` + `overflow:hidden`，结果有两个坑：
+ *   ① inline-block 元素在 overflow 从 visible 变 hidden 时，
+ *      基线会从 baseline 变成 bottom margin edge → 整行上下跳一下；
+ *   ② 一旦某条 `> *` 规则把水波也改成 relative，巨大的水波会把按钮撑大。
+ * 现在这两个属性都在 CSS 里预先设好（见 .btn 等选择器块），
+ * 这里只做"安全检查"，不再写样式。
+ */
 function _ripplePrepare(el) {
   const cs = getComputedStyle(el);
-  if (cs.position === 'static') {
-    el.style.position = 'relative';
-    el.dataset.fxRipplePos = '1';
-  }
-  // 已经有 auto/scroll 的元素不动（比如可滚动列表），其余补 hidden
-  if (cs.overflow !== 'hidden' && cs.overflow !== 'clip' && cs.overflow !== 'auto' && cs.overflow !== 'scroll') {
-    el.style.overflow = 'hidden';
-    el.dataset.fxRippleOverflow = '1';
-  }
+  // 只记录，不改样式。万一某个元素没被 CSS 覆盖到，靠 .fx-ripple 的
+  // position:absolute !important 兜底，不至于撑坏布局。
+  return cs;
 }
 
 /**
