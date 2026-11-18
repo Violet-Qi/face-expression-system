@@ -3541,3 +3541,153 @@ html.is-scroll-locked body {
 html.modal-open .cover {
   z-index: 900;
 }
+/* ============================================================
+   PWA：安装按钮 / iOS 引导 / 离线提示 / 更新提示（v1.9.5）
+   ============================================================ */
+
+/* 页头的「安装」按钮 */
+.install-btn {
+  color: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+}
+.install-btn:hover {
+  color: var(--primary-hover);
+  border-color: var(--primary);
+  background: var(--tint);
+}
+@media (max-width: 760px) {
+  .install-btn-txt { display: none; }
+  .install-btn { padding: 6px 9px; }
+}
+
+/* 离线提示条（顶部，细长） */
+.offline-bar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 980;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 14px;
+  font-size: 12px;
+  color: #7a5a00;
+  background: #fff4d6;
+  border-bottom: 1px solid #f0dca8;
+  animation: fxFadeIn 240ms var(--ease-out) both;
+}
+.offline-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #e0a000;
+  flex: none;
+}
+
+/* iOS 安装引导弹层 */
+.ios-guide-modal {
+  position: fixed;
+  z-index: 970;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 420px;
+  max-width: 90vw;
+  padding: 20px 22px 18px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(16, 42, 80, .2);
+  opacity: 0;
+}
+.ios-guide-modal.is-open { opacity: 1; animation: fxPopUp 300ms var(--ease-back) both; }
+
+.ios-guide-steps {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ios-guide-steps li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.ios-guide-steps li b { color: var(--text); font-weight: 600; }
+.ios-step-num {
+  flex: none;
+  width: 20px; height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--primary);
+  border-radius: 50%;
+  margin-top: 1px;
+}
+
+@media (max-width: 760px) {
+  .ios-guide-modal {
+    width: 100%; max-width: 100%;
+    top: auto; bottom: 0; left: 50%;
+    transform: translate(-50%, 0);
+    border-radius: 16px 16px 0 0;
+  }
+  .ios-guide-modal.is-open { animation: fxPopUpSheet 300ms var(--ease-back) both; }
+}
+
+/* 新版本提示（底部浮条） */
+.update-toast {
+  position: fixed;
+  z-index: 985;
+  left: 50%;
+  bottom: 24px;
+  transform: translate(-50%, 12px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 16px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  box-shadow: 0 12px 32px rgba(16, 42, 80, .18);
+  opacity: 0;
+  transition: opacity 240ms var(--ease-out), transform 240ms var(--ease-out);
+}
+.update-toast.is-open { opacity: 1; transform: translate(-50%, 0); }
+.update-toast-txt { font-size: 12.5px; color: var(--text); }
+.update-toast-btn {
+  padding: 5px 12px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.update-toast-btn.is-primary {
+  color: #fff;
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.update-toast-btn.is-primary:hover { background: var(--primary-hover); }
+
+/* 独立应用模式（已安装）时，隐藏掉浏览器才有意义的东西 */
+@media (display-mode: standalone) {
+  .install-btn { display: none !important; }
+}
+/* 版本号在安装版（PWA）下带 (p) 标记，用主色区分一下 */
+#versionLabel.is-pwa {
+  padding: 0 5px;
+  color: var(--primary);
+  background: var(--tint);
+  border-radius: 4px;
+  font-weight: 600;
+}

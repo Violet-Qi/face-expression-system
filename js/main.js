@@ -876,3 +876,12 @@ if (new URLSearchParams(location.search).has('debug')) {
     initChangelog();
   }
 })();
+/* ---------------- PWA：离线与安装 ---------------- */
+(function bootPWA() {
+  if (typeof initPWA !== 'function') return;
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPWA, { once: true });
+  } else {
+    initPWA();
+  }
+})();

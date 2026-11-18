@@ -4,11 +4,29 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>千颜万花 · Web 人脸表情识别</title>
-  <meta name="theme-color" content="#f4f6f8">
-  <link rel="icon" type="image/svg+xml" href="assets/logo.svg?v=1.9.4">
-  <link rel="stylesheet" href="css/style.css?v=1.9.4">
+  <meta name="theme-color" content="#ff7a1a">
+  <link rel="manifest" href="manifest.json">
+
+  <!-- 图标 -->
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg?v=1.9.5">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png?v=1.9.5">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png?v=1.9.5">
+
+  <!-- iOS 全屏（配合"添加到主屏幕"） -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="千颜万花">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <link rel="stylesheet" href="css/style.css?v=1.9.5">
 </head>
 <body class="fx-anim">
+
+<!-- 断网提示（PWA 装好后断网仍可用，这里只是告知状态） -->
+<div id="offlineBar" class="offline-bar" hidden>
+  <span class="offline-dot"></span>
+  <span>当前处于离线状态 · 模型已缓存，识别功能正常</span>
+</div>
 
   <!-- ============ 背景装饰（纯装饰，不接收点击）============
        左右两侧各两块：淡蓝几何底 + 上面盖一层毛玻璃片。
@@ -107,7 +125,7 @@
         </h1>
       </div>
       <p class="subtitle">Web 人脸表情识别</p>
-      <p class="page-meta">v1.9.4　·　最后更新 2026-11　·　全部计算在浏览器本地完成</p>
+      <p class="page-meta"><span id="versionLabel">v1.9.5</span>　·　最后更新 2026-11　·　全部计算在浏览器本地完成</p>
     </div>
     <div class="header-actions">
       <!-- 检测精度档位：常驻下拉，像 DSH 的模型选择器 -->
@@ -122,6 +140,11 @@
           <!-- 由 model-registry.js 动态生成 -->
         </div>
       </div>
+      <!-- 安装到桌面（PWA）—— 不支持或已安装时自动隐藏 -->
+      <button type="button" id="installBtn" class="settings-btn install-btn" hidden
+              aria-label="安装到桌面">
+        <span class="settings-btn-ico">⤓</span><span class="install-btn-txt">安装</span>
+      </button>
       <button type="button" id="analyzeBtn" class="settings-btn analyze-btn" aria-label="打开诊断与实验">
         <span class="settings-btn-ico">📊</span><span class="analyze-btn-txt">分析</span>
       </button>
@@ -634,31 +657,68 @@
   </footer>
 
   <!-- face-api.js 主库（已内置 TensorFlow.js，无需联网） -->
-  <script src="lib/face-api.js?v=1.9.4"></script>
+  <script src="lib/face-api.js?v=1.9.5"></script>
 
   <!-- 业务代码按职责拆成 10 个文件。
        顺序有讲究：config 提供全局配置与状态，其余文件都要用它；
        main.js 必须最后 —— 它会在加载时"立即"绑定事件，
        所以要保证前面所有文件里的函数都已经定义好了。
        详见 代码导读.md -->
-  <script src="js/config.js?v=1.9.4"></script>
-<script src="js/smoothing.js?v=1.9.4"></script>
-<script src="js/ripple.js?v=1.9.4"></script>
-<script src="js/changelog.js?v=1.9.4"></script>
-<script src="js/model-registry.js?v=1.9.4"></script>
-<script src="js/expression-engine.js?v=1.9.4"></script>
-<script src="js/auth.js?v=1.9.4"></script>
-<script src="js/settings.js?v=1.9.4"></script>
-<script src="js/diagnostics.js?v=1.9.4"></script>
-  <script src="js/models.js?v=1.9.4"></script>
-  <script src="js/render.js?v=1.9.4"></script>
-  <script src="js/report.js?v=1.9.4"></script>
-  <script src="js/image-select.js?v=1.9.4"></script>
-  <script src="js/recognize.js?v=1.9.4"></script>
-  <script src="js/camera.js?v=1.9.4"></script>
-  <script src="js/video.js?v=1.9.4"></script>
-  <script src="js/stats-trend.js?v=1.9.4"></script>
-  <script src="js/grouping.js?v=1.9.4"></script>
-  <script src="js/main.js?v=1.9.4"></script>
+  <script src="js/config.js?v=1.9.5"></script>
+<script src="js/smoothing.js?v=1.9.5"></script>
+<script src="js/ripple.js?v=1.9.5"></script>
+<script src="js/changelog.js?v=1.9.5-p2"></script>
+<script src="js/model-registry.js?v=1.9.5"></script>
+<script src="js/expression-engine.js?v=1.9.5"></script>
+<script src="js/auth.js?v=1.9.5"></script>
+<script src="js/settings.js?v=1.9.5"></script>
+<script src="js/diagnostics.js?v=1.9.5"></script>
+  <script src="js/models.js?v=1.9.5"></script>
+  <script src="js/render.js?v=1.9.5"></script>
+  <script src="js/report.js?v=1.9.5"></script>
+  <script src="js/image-select.js?v=1.9.5"></script>
+  <script src="js/recognize.js?v=1.9.5"></script>
+  <script src="js/camera.js?v=1.9.5"></script>
+  <script src="js/video.js?v=1.9.5"></script>
+  <script src="js/stats-trend.js?v=1.9.5"></script>
+  <script src="js/grouping.js?v=1.9.5"></script>
+  <script src="js/pwa.js?v=1.9.5"></script>
+  <script src="js/main.js?v=1.9.5"></script>
+
+<!-- ============ iOS 安装引导（Safari 没有安装 API，只能图文引导）============ -->
+<div id="iosGuideMask" class="drawer-mask" hidden></div>
+<div id="iosGuideModal" class="ios-guide-modal" hidden aria-hidden="true" role="dialog" aria-label="安装到主屏幕">
+  <div class="preset-modal-head">
+    <h2>安装到主屏幕</h2>
+    <button type="button" id="iosGuideClose" class="drawer-close" aria-label="关闭">×</button>
+  </div>
+  <p class="preset-modal-desc">
+    iPhone / iPad 的 Safari 不支持一键安装，需要手动添加。装好之后可以全屏打开、断网也能用。
+  </p>
+  <ol class="ios-guide-steps">
+    <li>
+      <span class="ios-step-num">1</span>
+      <span>点底部工具栏中间的 <b>分享按钮</b>（方框向上的箭头）</span>
+    </li>
+    <li>
+      <span class="ios-step-num">2</span>
+      <span>在弹出菜单里往下滑，找到 <b>「添加到主屏幕」</b></span>
+    </li>
+    <li>
+      <span class="ios-step-num">3</span>
+      <span>点右上角 <b>「添加」</b>，桌面上就会出现千颜万花的图标</span>
+    </li>
+  </ol>
+  <p class="preset-modal-note">
+    装好后从桌面图标打开，没有浏览器地址栏，看起来和 App 一样。
+  </p>
+</div>
+
+<!-- ============ 新版本提示 ============ -->
+<div id="updateToast" class="update-toast" hidden>
+  <span class="update-toast-txt">有新版本可用</span>
+  <button type="button" id="updateToastYes" class="update-toast-btn is-primary">立即更新</button>
+  <button type="button" id="updateToastNo" class="update-toast-btn">稍后</button>
+</div>
 </body>
 </html>
