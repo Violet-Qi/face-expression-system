@@ -240,6 +240,12 @@ function openChangelog() {
   const modal = document.getElementById('changelogModal');
   if (!mask || !modal) return;
   renderChangelog();
+  /* V1.9.EXP：从触发按钮展开 */
+  if (typeof openFromButton === 'function') {
+    openFromButton(modal, mask);
+    modal.setAttribute('aria-hidden', 'false');
+    return;
+  }
   mask.hidden = false;
   modal.hidden = false;
   requestAnimationFrame(() => {
@@ -254,6 +260,7 @@ function closeChangelog() {
   const mask = document.getElementById('changelogMask');
   const modal = document.getElementById('changelogModal');
   if (!mask || !modal || modal.hidden) return;
+  if (typeof closeFromButton === 'function') { closeFromButton(modal); return; }
   modal.classList.remove('is-open');
   mask.classList.remove('is-open');
   modal.classList.add('is-closing');

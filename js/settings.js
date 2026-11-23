@@ -1,7 +1,7 @@
 /* ============================================================
    设置层：判定偏好 + 跨设备同步（匿名编号）+ 设置分享链接
    ------------------------------------------------------------
-   设计取舍（这里写清楚）：
+   设计取舍（答辩也会问，这里写清楚）：
 
    1. **为什么不记录 IP / 设备信息？**
       IP 在《个人信息保护法》和 GDPR 里都算个人信息，存了就得改隐私声明。
@@ -341,11 +341,14 @@ function setDrawer(open) {
     syncDrawerUI();
   } else {
     d.classList.remove('is-open'); m.classList.remove('is-open');
-    d.classList.add('is-closing');        // 让退场关键帧有机会跑
+    // V1.9.EXP：抽屉本体 + 遮罩都加 is-closing 渐出（engineer 检测出 settingsMask 瞬间消失，
+    // 因没给遮罩加 is-closing）。让抽屉关闭时遮罩也平滑淡出，与其他弹窗一致。
+    d.classList.add('is-closing');
+    m.classList.add('is-closing');
     d.setAttribute('aria-hidden', 'true');
     if (b) b.setAttribute('aria-expanded', 'false');
     setTimeout(() => {
-      if (!drawerOpen) { d.classList.remove('is-closing'); d.hidden = true; m.hidden = true; }
+      if (!drawerOpen) { d.classList.remove('is-closing'); m.classList.remove('is-closing'); d.hidden = true; m.hidden = true; }
     }, 240);
   }
 }
@@ -426,6 +429,16 @@ function openAnaModal(tab) {
   const mask = document.getElementById('anaMask');
   const modal = document.getElementById('anaModal');
   if (!mask || !modal) return;
+  // V1.9.EXP：打开弹窗前先收起下拉菜单，避免两个浮层混叠（z-index 遮挡问题）
+  if (typeof closePresetMenu === 'function') closePresetMenu();
+  /* V1.9.EXP：从触发按钮展开（代替旧的 is-open 弹入） */
+  if (typeof openFromButton === 'function') {
+    openFromButton(modal, mask);
+    modal.setAttribute('aria-hidden', 'false');
+    setAnaTab(tab || 'diag');
+    if (typeof renderDiagPanel === 'function') renderDiagPanel();
+    return;
+  }
   mask.hidden = false;
   modal.hidden = false;
   requestAnimationFrame(() => { mask.classList.add('is-open'); modal.classList.add('is-open'); });
@@ -439,6 +452,7 @@ function closeAnaModal() {
   const mask = document.getElementById('anaMask');
   const modal = document.getElementById('anaModal');
   if (!mask || !modal || modal.hidden) return;
+  if (typeof closeFromButton === 'function') { closeFromButton(modal); return; }
   modal.classList.remove('is-open');
   mask.classList.remove('is-open');
   modal.classList.add('is-closing');
@@ -720,6 +734,13 @@ function openPresetModal() {
   const mask = document.getElementById('presetMask');
   const modal = document.getElementById('presetModal');
   if (!mask || !modal) return;
+  /* V1.9.EXP：从触发按钮展开 */
+  if (typeof openFromButton === 'function') {
+    openFromButton(modal, mask);
+    modal.setAttribute('aria-hidden', 'false');
+    syncPresetChips();
+    return;
+  }
   mask.hidden = false;
   modal.hidden = false;
   requestAnimationFrame(() => { mask.classList.add('is-open'); modal.classList.add('is-open'); });
@@ -735,6 +756,7 @@ function closePresetModal() {
   const mask = document.getElementById('presetMask');
   const modal = document.getElementById('presetModal');
   if (!mask || !modal || modal.hidden) return;
+  if (typeof closeFromButton === 'function') { closeFromButton(modal); return; }
   modal.classList.remove('is-open');
   mask.classList.remove('is-open');
   modal.classList.add('is-closing');

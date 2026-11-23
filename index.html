@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>千颜万花 · Web 人脸表情识别</title>
-  <meta name="theme-color" content="#ff7a1a">
+  <meta name="theme-color" content="#6b7cff">
   <link rel="manifest" href="manifest.json">
 
   <!-- 图标 -->
-  <link rel="icon" type="image/svg+xml" href="assets/logo.svg?v=1.9.5">
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png?v=1.9.5">
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png?v=1.9.5">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg?v=1.9.5e17">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png?v=1.9.5e17">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png?v=1.9.5e17">
 
   <!-- iOS 全屏（配合"添加到主屏幕"） -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -18,7 +18,8 @@
   <meta name="apple-mobile-web-app-title" content="千颜万花">
   <meta name="mobile-web-app-capable" content="yes">
 
-  <link rel="stylesheet" href="css/style.css?v=1.9.5">
+  <link rel="stylesheet" href="css/style.css?v=1.9.5e17">
+  <link rel="stylesheet" href="css/anim.css?v=1.9.5e17">
 </head>
 <body class="fx-anim">
 
@@ -50,9 +51,9 @@
       <svg class="cover-logo" viewBox="0 0 64 64" aria-hidden="true">
         <defs>
           <linearGradient id="coverGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#ffa64d"/>
-            <stop offset="0.55" stop-color="#ff7a1a"/>
-            <stop offset="1" stop-color="#e85d04"/>
+            <stop offset="0" stop-color="#8b9dff"/>
+            <stop offset="0.55" stop-color="#6b7cff"/>
+            <stop offset="1" stop-color="#38bdf8"/>
           </linearGradient>
         </defs>
         <g fill="url(#coverGrad)">
@@ -64,7 +65,7 @@
           <path d="M32 7 C 41 16 41 26 32 31 C 23 26 23 16 32 7 Z" transform="rotate(300 32 32)"/>
         </g>
         <circle cx="32" cy="32" r="5.4" fill="#fff"/>
-        <circle cx="32" cy="32" r="2.1" fill="#ff7a1a"/>
+        <circle cx="32" cy="32" r="2.1" fill="#8b5cf6"/>
       </svg>
       <h1 class="cover-title brand" aria-label="千颜万花">
         <span class="ch ch1" aria-hidden="true">千</span><span class="ch ch2" aria-hidden="true">颜</span><span class="ch ch3" aria-hidden="true">万</span><span class="ch ch4" aria-hidden="true">花</span>
@@ -104,9 +105,9 @@
         <svg class="brand-logo" viewBox="0 0 64 64" aria-hidden="true">
           <defs>
             <linearGradient id="brandGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#ffa64d"/>
-              <stop offset="0.55" stop-color="#ff7a1a"/>
-              <stop offset="1" stop-color="#e85d04"/>
+              <stop offset="0" stop-color="#8b9dff"/>
+              <stop offset="0.55" stop-color="#6b7cff"/>
+              <stop offset="1" stop-color="#38bdf8"/>
             </linearGradient>
           </defs>
           <g fill="url(#brandGrad)">
@@ -118,7 +119,7 @@
             <path d="M32 7 C 41 16 41 26 32 31 C 23 26 23 16 32 7 Z" transform="rotate(300 32 32)"/>
           </g>
           <circle cx="32" cy="32" r="5.4" fill="#fff"/>
-          <circle cx="32" cy="32" r="2.1" fill="#ff7a1a"/>
+          <circle cx="32" cy="32" r="2.1" fill="#8b5cf6"/>
         </svg>
         <h1 class="brand" aria-label="千颜万花">
           <span class="ch ch1" aria-hidden="true">千</span><span class="ch ch2" aria-hidden="true">颜</span><span class="ch ch3" aria-hidden="true">万</span><span class="ch ch4" aria-hidden="true">花</span>
@@ -558,8 +559,10 @@
     <div class="drawer-body">
       <p id="settingsToast" class="drawer-toast" hidden></p>
 
-      <!-- 主题色 -->
-      <section class="set-group">
+      <!-- 主题色：V1.9.EXP 先统一蓝紫玻璃，主题切换暂不开放（保留逻辑，方便以后恢复）
+           恢复方法：去掉 <section> 上的 hidden，并把 anim.css 里那几条
+           "html[data-theme...]" 统一规则改为只作用于 :root 即可 -->
+      <section class="set-group" hidden>
         <h3>主题色</h3>
         <p class="set-desc">只换颜色，不改布局。</p>
         <div class="theme-row">
@@ -657,33 +660,34 @@
   </footer>
 
   <!-- face-api.js 主库（已内置 TensorFlow.js，无需联网） -->
-  <script src="lib/face-api.js?v=1.9.5"></script>
+  <script src="lib/face-api.js?v=1.9.5e17"></script>
 
   <!-- 业务代码按职责拆成 10 个文件。
        顺序有讲究：config 提供全局配置与状态，其余文件都要用它；
        main.js 必须最后 —— 它会在加载时"立即"绑定事件，
        所以要保证前面所有文件里的函数都已经定义好了。
        详见 代码导读.md -->
-  <script src="js/config.js?v=1.9.5"></script>
-<script src="js/smoothing.js?v=1.9.5"></script>
-<script src="js/ripple.js?v=1.9.5"></script>
-<script src="js/changelog.js?v=1.9.5-p2"></script>
-<script src="js/model-registry.js?v=1.9.5"></script>
-<script src="js/expression-engine.js?v=1.9.5"></script>
-<script src="js/auth.js?v=1.9.5"></script>
-<script src="js/settings.js?v=1.9.5"></script>
-<script src="js/diagnostics.js?v=1.9.5"></script>
-  <script src="js/models.js?v=1.9.5"></script>
-  <script src="js/render.js?v=1.9.5"></script>
-  <script src="js/report.js?v=1.9.5"></script>
-  <script src="js/image-select.js?v=1.9.5"></script>
-  <script src="js/recognize.js?v=1.9.5"></script>
-  <script src="js/camera.js?v=1.9.5"></script>
-  <script src="js/video.js?v=1.9.5"></script>
-  <script src="js/stats-trend.js?v=1.9.5"></script>
-  <script src="js/grouping.js?v=1.9.5"></script>
-  <script src="js/pwa.js?v=1.9.5"></script>
-  <script src="js/main.js?v=1.9.5"></script>
+  <script src="js/config.js?v=1.9.5e17"></script>
+<script src="js/smoothing.js?v=1.9.5e17"></script>
+<script src="js/appear-motion.js?v=1.9.5e17"></script>
+<script src="js/ripple.js?v=1.9.5e17"></script>
+<script src="js/changelog.js?v=1.9.5e17-p2"></script>
+<script src="js/model-registry.js?v=1.9.5e17"></script>
+<script src="js/expression-engine.js?v=1.9.5e17"></script>
+<script src="js/auth.js?v=1.9.5e17"></script>
+<script src="js/settings.js?v=1.9.5e17"></script>
+<script src="js/diagnostics.js?v=1.9.5e17"></script>
+  <script src="js/models.js?v=1.9.5e17"></script>
+  <script src="js/render.js?v=1.9.5e17"></script>
+  <script src="js/report.js?v=1.9.5e17"></script>
+  <script src="js/image-select.js?v=1.9.5e17"></script>
+  <script src="js/recognize.js?v=1.9.5e17"></script>
+  <script src="js/camera.js?v=1.9.5e17"></script>
+  <script src="js/video.js?v=1.9.5e17"></script>
+  <script src="js/stats-trend.js?v=1.9.5e17"></script>
+  <script src="js/grouping.js?v=1.9.5e17"></script>
+  <script src="js/pwa.js?v=1.9.5e17"></script>
+  <script src="js/main.js?v=1.9.5e17"></script>
 
 <!-- ============ iOS 安装引导（Safari 没有安装 API，只能图文引导）============ -->
 <div id="iosGuideMask" class="drawer-mask" hidden></div>

@@ -29,7 +29,7 @@
    ============================================================ */
 
 /* ⚠️ 每次发版必须改这里，改成和 index.html 的 ?v= 一致的版本号 */
-const CACHE_VERSION = 'v1.9.5(p)-2';
+const CACHE_VERSION = 'v1.9.5(p)-19';
 const CACHE_NAME = 'qianyan-' + CACHE_VERSION;
 
 /* ① 核心层：安装时就要缓存好的（约 10 MB） */
@@ -39,6 +39,7 @@ const CORE_ASSETS = [
   './admin.html',
   './manifest.json',
   './css/style.css',
+  './css/anim.css',
   './css/admin.css',
   './assets/logo.svg',
   './assets/icon-192.png',
@@ -67,6 +68,8 @@ const CORE_ASSETS = [
   './js/grouping.js',
   './js/main.js',
   './js/admin.js',
+  './js/appear-motion.js',
+  './js/pwa.js',
 
   /* 推理引擎本体 */
   './lib/face-api.js',

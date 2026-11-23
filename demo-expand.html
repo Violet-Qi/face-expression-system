@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>从按钮展开弹窗 · 演示</title>
+<link rel="stylesheet" href="css/anim.css">
+<style>
+  body { margin:0; font-family:system-ui,sans-serif; }
+  .vibrant-bg { min-height:100vh; display:flex; align-items:center; justify-content:center; }
+  .btn-grid { display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
+  .btn {
+    padding:16px 26px; border:none; border-radius:var(--radius-md); cursor:pointer;
+    font-size:15px; color:#fff;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    box-shadow:0 6px 20px rgba(107,124,255,.3);
+    transition:transform var(--dur-base) var(--ease-spring-sm), box-shadow var(--dur-fast) var(--ease-decel);
+  }
+  .btn:hover { transform:translateY(-2px) scale(1.02); box-shadow:0 10px 28px rgba(107,124,255,.4); }
+  .btn:active { transform:scale(.94); }
+
+  /* 遮罩 + 弹窗层 */
+  .overlay-layer {
+    position:fixed; inset:0; z-index:990; display:none;
+    align-items:center; justify-content:center;
+    background:rgba(31,38,135,.25); backdrop-filter:blur(8px);
+  }
+  /* 弹窗本体：JS 会设 --appear-dx/dy，再触发 fx-appear */
+  .app-modal {
+    transform-origin:center;
+    width:360px; padding:28px;
+    background:rgba(255,255,255,.9); backdrop-filter:blur(28px) saturate(180%);
+    border:1px solid rgba(255,255,255,.6); border-radius:var(--radius-xl);
+    box-shadow:var(--shadow-lg);
+  }
+  .modal-title { font-size:18px; font-weight:600; margin:0 0 8px; }
+  .modal-body { font-size:14px; color:#64748b; line-height:1.7; }
+  .close-btn {
+    margin-top:16px; padding:8px 22px; border:none; border-radius:var(--radius-pill);
+    cursor:pointer; background:var(--accent); color:#fff;
+    transition:transform var(--dur-base) var(--ease-spring-sm);
+  }
+  .close-btn:active { transform:scale(.93); }
+</style>
+</head>
+<body>
+<div class="vibrant-bg">
+  <div class="btn-grid">
+    <button class="btn" onclick="openFrom(this)">展开弹窗</button>
+    <button class="btn" style="background:linear-gradient(135deg,var(--accent-3),var(--accent-2))" onclick="openFrom(this)">再点我展开</button>
+  </div>
+</div>
+
+<div class="overlay-layer" id="layer">
+  <div class="app-modal" id="modal">
+    <h2 class="modal-title">从按钮展开的弹窗</h2>
+    <p class="modal-body">
+      这个弹窗<u>不是</u>从上方砸下来，而是<strong>从你点的那个按钮的位置</strong>，
+      一点点、带着回弹地放大展开成一个正常窗口 —— 就像手机桌面点开 App。
+    </p>
+    <button class="close-btn" onclick="closeModal()">关闭</button>
+  </div>
+</div>
+
+<script>
+  const layer = document.getElementById('layer');
+  const modal = document.getElementById('modal');
+
+  function openFrom(btn) {
+    const br = btn.getBoundingClientRect();
+    layer.style.display = 'flex';
+    modal.style.transform = 'none';
+    // 等一帧让弹窗排好，拿到实际中心
+    requestAnimationFrame(() => {
+      const mr = modal.getBoundingClientRect();
+      const dx = (br.left + br.width/2) - (mr.left + mr.width/2);
+      const dy = (br.top + br.height/2) - (mr.top + mr.height/2);
+      modal.style.setProperty('--appear-dx', dx.toFixed(1) + 'px');
+      modal.style.setProperty('--appear-dy', dy.toFixed(1) + 'px');
+      modal.classList.remove('fx-appear');
+      void modal.offsetWidth;
+      modal.classList.add('fx-appear');
+    });
+  }
+
+  function closeModal() {
+    layer.style.display = 'none';
+    modal.classList.remove('fx-appear');
+  }
+</script>
+</body>
+</html>

@@ -304,10 +304,23 @@ function openAuthPanel(reason) {
     return;
   }
 
-  mask.hidden = false;
-  panel.hidden = false;
-  lockPageScroll(true);
-  requestAnimationFrame(() => { mask.classList.add('is-open'); panel.classList.add('is-open'); });
+  /* 从按钮展开：主动点击（无 reason 或 reason 为 welcome 手动打开）时，
+     用 openFromButton 从 authBtn 展开；游客门禁等自动触发（guest-used/need-login）
+     没有明确的按钮，走默认 spring 落位（.is-open） */
+  const isAutoTrigger = reason === 'guest-used' || reason === 'need-login';
+  if (!isAutoTrigger && typeof openFromButton === 'function') {
+    // 起点交给自动检测：点页头按钮就从页头展开，
+    // 点页脚「用户协议」就从页脚展开
+    openFromButton(panel, mask);
+  } else {
+    mask.hidden = false;
+    panel.hidden = false;
+    lockPageScroll(true);
+    // 记录遮罩，让 closeFromButton（依赖 _maskObj）能定位并隐藏它；
+    // 否则 autoauth 走 CSS fallback 不设 _maskObj，关闭后遮罩残留锁页。
+    panel._maskObj = mask;
+    requestAnimationFrame(() => { mask.classList.add('is-open'); panel.classList.add('is-open'); });
+  }
   panel.setAttribute('aria-hidden', 'false');
 
   const hint = document.getElementById('authHint');
@@ -346,6 +359,7 @@ function closeAuthPanel() {
   const panel = document.getElementById('authPanel');
   if (!mask || !panel) return;
   if (panel.hidden) return;          // 已经关了就别重复播
+  if (typeof closeFromButton === 'function') { closeFromButton(panel); return; }
 
   /* 关闭必须有动画，不能"啪"地消失。
      做法：先挂 .is-closing 播退场关键帧（240ms），

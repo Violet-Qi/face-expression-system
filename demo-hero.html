@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图片识别主界面 · V1.9.EXP 视觉样板</title>
+<link rel="stylesheet" href="css/anim.css">
+<style>
+  /* 样板页专用：仅演示布局，不走正式 index.html */
+  body { margin:0; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; color:#1e293b; }
+  .app-body { background: var(--bg-gradient); min-height: 100vh; }
+
+  /* 页头 */
+  .brand { display:flex; align-items:center; gap:10px; }
+  .brand-logo { width:30px; height:30px; color:var(--accent); }
+  .brand-name { font-weight:700; font-size:17px; background:linear-gradient(135deg,var(--accent),var(--accent-2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .brand-sub { font-size:12px; color:#64748b; }
+
+  .hdr-actions { display:flex; gap:8px; align-items:center; }
+  .hdr-btn {
+    display:inline-flex; align-items:center; gap:6px; padding:8px 14px;
+    font-size:13px; color:#475569; background:var(--glass-bg);
+    border:1px solid var(--glass-border); border-radius:var(--radius-pill);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter:blur(12px);
+    cursor:pointer; transition:transform var(--dur-micro) var(--ease-out), background var(--dur-fast) var(--ease-out);
+  }
+  .hdr-btn:hover { background:var(--glass-bg-strong); }
+  .hdr-btn:active { transform:scale(.95); }
+  .hdr-btn.is-primary { color:#fff; background:linear-gradient(135deg,var(--accent),var(--accent-2),var(--accent-3)); background-size:200% 200%; border:none; transition:background-position var(--dur-base) var(--ease-decel), transform var(--dur-base) var(--ease-spring-sm); }
+
+  /* 页头布局 */
+  .app-header { display:flex; align-items:center; justify-content:space-between; padding:14px 24px; }
+
+  /* 主内容 */
+  .app-main { max-width:980px; margin:0 auto; padding:20px; }
+
+  /* 标签页 */
+  .tabs { display:flex; gap:4px; padding:4px; background:var(--glass-bg); border:1px solid var(--glass-border); border-radius:var(--radius-pill); margin-bottom:20px; }
+  .tab { flex:1; padding:10px; text-align:center; font-size:14px; color:#64748b; border-radius:var(--radius-pill); cursor:pointer; transition:background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out); }
+  .tab.is-active { color:var(--accent); background:#fff; box-shadow:var(--shadow-sm); font-weight:600; }
+
+  /* 两列卡片布局 */
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+
+  /* 上传区 */
+  .drop-zone {
+    border:2px dashed rgba(107,124,255,.4); border-radius:var(--radius-lg);
+    padding:44px 24px; text-align:center; cursor:pointer;
+    transition:border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out), transform var(--dur-micro) var(--ease-out);
+  }
+  .drop-zone:hover { border-color:var(--accent); background:rgba(107,124,255,.05); }
+  .drop-zone:active { transform:scale(.99); }
+  .dz-ico { font-size:38px; margin-bottom:8px; }
+  .dz-title { font-weight:600; font-size:15px; color:#1e293b; }
+  .dz-sub { font-size:12px; color:#94a3b8; margin-top:4px; }
+
+  /* 识别结果卡片 */
+  .canvas-wrap { height:300px; display:flex; align-items:center; justify-content:center; background:rgba(31,38,135,.05); border-radius:var(--radius-md); }
+  .canvas-skeleton { display:flex; flex-direction:column; align-items:center; color:#94a3b8; gap:8px; }
+  .skeleton-ico { font-size:32px; opacity:.5; }
+
+  /* 统计块 */
+  .stat-row { margin-top:16px; }
+  .stat-label { font-size:12px; color:#64748b; margin-bottom:8px; }
+  .stat-bar { height:10px; border-radius:var(--radius-pill); background:rgba(31,38,135,.08); overflow:hidden; }
+  .stat-fill { height:100%; border-radius:var(--radius-pill); background:linear-gradient(90deg,var(--accent),var(--accent-2),var(--accent-3)); background-size:200% 100%; width:78%; animation:statFlow 2s linear infinite; }
+
+  /* 面板标题 */
+  .panel-title { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+  .panel-title h2 { font-size:15px; margin:0; font-weight:600; }
+  .panel-title .dot { width:6px; height:6px; border-radius:50%; background:var(--accent); }
+
+  .panel-body-title { font-size:15px; font-weight:600; margin:0 0 4px; }
+  .panel-body-sub { font-size:12px; color:#94a3b8; margin:0 0 14px; }
+
+  .empty-hint { font-size:13px; color:#94a3b8; text-align:center; padding:14px; }
+  @keyframes statFlow { 0% {background-position:0% 0;} 100% {background-position:200% 0;} }
+  .mask-opt { display:flex; align-items:center; gap:8px; font-size:13px; color:#475569; margin-top:12px; }
+</style>
+</head>
+<body>
+<div class="app-body vibrant-bg">
+
+  <!-- 页头（玻璃吸顶） -->
+  <header class="app-header glass-card--strong">
+    <div class="brand">
+      <span class="brand-logo">✿</span>
+      <div>
+        <div class="brand-name fx-bounce-in">千颜万花</div>
+        <div class="brand-sub">Web 人脸表情识别 · V1.9.EXP</div>
+      </div>
+    </div>
+    <div class="hdr-actions">
+      <button class="hdr-btn">⚡ 速度优先 ▾</button>
+      <button class="hdr-btn">📊 分析</button>
+      <button class="hdr-btn is-primary">登录 / 注册</button>
+      <button class="hdr-btn">⚙ 设置</button>
+    </div>
+  </header>
+
+  <!-- 主内容 -->
+  <div class="app-main">
+
+    <!-- 标签页 -->
+    <nav class="tabs">
+      <div class="tab is-active">图片识别</div>
+      <div class="tab">摄像头实时</div>
+      <div class="tab">视频文件</div>
+    </nav>
+
+    <div class="grid">
+      <!-- 左：上传 -->
+      <section class="panel-glass" style="padding:20px">
+        <div class="panel-title"><span class="dot"></span><h2>上传图片</h2></div>
+        <div class="drop-zone">
+          <div class="dz-ico">🖼️</div>
+          <div class="dz-title">点击或拖拽图片到这里</div>
+          <div class="dz-sub">支持 JPG · PNG · WebP · GIF，可多选</div>
+        </div>
+        <label class="mask-opt">
+          <input type="checkbox" checked> 自动识别人物分组
+          <span style="margin-left:auto;font-size:11px;color:#94a3b8">只判断「像不像」，不识别身份</span>
+        </label>
+      </section>
+
+      <!-- 右：识别结果 -->
+      <section class="panel-glass" style="padding:20px">
+        <div class="panel-title"><span class="dot"></span><h2>识别结果</h2></div>
+        <div class="canvas-wrap">
+          <div class="canvas-skeleton">
+            <span class="skeleton-ico">🤖</span>
+            <span>等待图片…</span>
+          </div>
+        </div>
+        <div class="stat-row">
+          <div class="stat-label">共检测到 3 张人脸，识别耗时 300 毫秒</div>
+          <div class="stat-bar"><div class="stat-fill"></div></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- 统计 + 趋势 -->
+    <div class="grid" style="margin-top:16px">
+      <section class="panel-glass" style="padding:20px">
+        <div class="panel-body-title">表情识别信息</div>
+        <div class="panel-body-sub">本次会话的逐脸表情与置信度</div>
+        <div class="empty-hint">识别后将在此展示每张脸的表情与置信度</div>
+      </section>
+      <section class="panel-glass" style="padding:20px">
+        <div class="panel-body-title">本次会话表情统计</div>
+        <div class="panel-body-sub">累计的人脸表情分布</div>
+        <div class="empty-hint">再识别一次，这里就会画出趋势曲线</div>
+      </section>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

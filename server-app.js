@@ -10,7 +10,7 @@
      · **零第三方依赖** —— 只用 Node 内置模块：
          node:http / node:sqlite / node:crypto / node:fs
      · 数据库用 Node 24 内置的 SQLite（node:sqlite），不需要装任何东西
-     · 这样在网络受限的机器上也能直接跑，也便于说明
+     · 这样在网络受限的机器上也能直接跑，答辩时也好解释
 
    隐私边界（本项目最重要的一条）：
      · 只接收**匿名的计数统计**：模式、人脸数、各表情出现次数、耗时、时间戳
@@ -199,7 +199,7 @@ const PRESET_WHITELIST = ['speed', 'balanced', 'accurate'];
 const EXPR_ENGINE_WHITELIST = ['faceapi', 'ferplus'];
 const SETTINGS_MAX_ROWS = 20000;      // 防刷：超过就丢最旧的
 
-/* 用户登录态有效期（7 天，比管理员长——普通用户使用周期更长） */
+/* 学生登录态有效期（7 天，比管理员长——学生要跨答辩周期使用） */
 const USER_SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 /* ---------------- 登录会话（HMAC 签名 Cookie，无状态） ---------------- */

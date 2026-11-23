@@ -39,12 +39,8 @@ const RIPPLE_SELECTOR = [
   '.auth-tab',
   '.drawer-close',
   '.set-btn',
-  '.set-row-btn',
   '.info-exp-link',
-  '.cover-start',
-  '.face-card',
-  '.tab-btn',
-  '.link-btn'
+  '.cover-start'
 ].join(',');
 
 /**

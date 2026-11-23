@@ -144,9 +144,13 @@ function closeIOSInstallGuide() {
   if (!modal || !mask || modal.hidden) return;
 
   modal.classList.remove('is-open');
+  // V1.9.EXP：给遮罩也加 is-closing 渐出（stylist 预检发现这里没加，
+  // 导致 iOS 引导关闭时遮罩"啪"地消失）。与其它弹窗的遮罩退场一致。
   mask.classList.remove('is-open');
+  mask.classList.add('is-closing');
   const done = () => {
     modal.hidden = true;
+    mask.classList.remove('is-closing');
     mask.hidden = true;
     if (typeof lockPageScroll === 'function') lockPageScroll(false);
   };

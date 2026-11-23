@@ -1,0 +1,933 @@
+/* ============================================================
+   千颜万花 · V1.9.EXP 全局动效语言
+   ------------------------------------------------------------
+   模仿 MIUI 12.5 的「统一动效语言」，为 2.0 打地基。
+   这套文件是实验版的，从 0 建，不影响线上 v1.9.5。
+
+   核心思想：
+     ① 所有动画共享同一套「时长梯度」——不快不慢，有节奏感
+     ② 所有动画共享同一套「缓动曲线」——进入/退出/强调/物理 四种
+     ③ 有「物理感」：元素有质量，不是机械地缩放
+     ④ 有「空间连贯」：元素从哪来回到哪去，有轨迹
+     ⑤ 环境光：背景渐变缓慢推移，随主题色联动
+
+   用法：页面用 <link rel="stylesheet" href="css/anim.css"> 引入，
+        在 style.css 之前（style.css 里后续会改用这些变量）。
+   ============================================================ */
+
+:root {
+  /* ============================================================
+    动效语言 / 视觉变量（单一来源，2026-11-22 合并去重）
+    ------------------------------------------------------------
+    原本分散在 5 处 :root 块里，同名变量被反复覆盖，
+    改一处会被别处盖掉（§48 记录的问题1）。现已合并为一处。
+    ============================================================ */
+  --dur-micro: 90ms;                           /* 按压反馈 / 圆点闪烁 */
+  --dur-fast: 200ms;                           /* 小元素 / 颜色切换 / 开关 */
+  --dur-base: 320ms;                           /* 标准过渡 / 卡片 */
+  --dur-slow: 520ms;                           /* 弹窗 / 抽屉 / 大元素 */
+  --dur-hero: 900ms;                           /* 封面 / 大标题 / 环境光 */
+  --dur-motion: 620ms;                         /* 空间位移轨迹 */
+  --ease-spring: linear(0, 0.0166 1.6%, 0.0609 3.2%, 0.1252 4.8%, 0.2029 6.3%, 0.2886 7.9%, 0.3777 9.5%, 0.4666 11.1%, 0.5525 12.7%, 0.6333 14.3%, 0.7076 15.9%, 0.7745 17.5%, 0.8336 19%, 0.8846 20.6%, 0.9279 22.2%, 0.9637 23.8%, 0.9926 25.4%, 1.0152 27%, 1.0322 28.6%, 1.0444 30.2%, 1.0524 31.7%, 1.0569 33.3%, 1.0586 34.9%, 1.0581 36.5%, 1.0558 38.1%, 1.0522 39.7%, 1.0478 41.3%, 1.0429 42.9%, 1.0377 44.4%, 1.0324 46%, 1.0273 47.6%, 1.0225 49.2%, 1.0181 50.8%, 1.014 52.4%, 1.0105 54%, 1.0074 55.6%, 1.0047 57.1%, 1.0026 58.7%, 1.0008 60.3%, 0.9994 61.9%, 0.9983 63.5%, 0.9975 65.1%, 0.997 66.7%, 0.9967 68.3%, 0.9966 69.8%, 0.9966 71.4%, 0.9967 73%, 0.9969 74.6%, 0.9971 76.2%, 0.9974 77.8%, 0.9977 79.4%, 0.998 81%, 0.9983 82.5%, 0.9986 84.1%, 0.9989 85.7%, 0.9991 87.3%, 0.9993 88.9%, 0.9995 90.5%, 0.9997 92.1%, 0.9998 93.7%, 0.9999 95.2%, 1 96.8%, 1.0001 98.4%, 1);
+  --ease-spring-sm: linear(0, 0.0165 1.6%, 0.0598 3.2%, 0.122 4.8%, 0.1963 6.3%, 0.2774 7.9%, 0.3611 9.5%, 0.4441 11.1%, 0.524 12.7%, 0.599 14.3%, 0.668 15.9%, 0.7303 17.5%, 0.7855 19%, 0.8338 20.6%, 0.8754 22.2%, 0.9105 23.8%, 0.9397 25.4%, 0.9635 27%, 0.9826 28.6%, 0.9975 30.2%, 1.0087 31.7%, 1.0169 33.3%, 1.0226 34.9%, 1.0261 36.5%, 1.0279 38.1%, 1.0284 39.7%, 1.0278 41.3%, 1.0266 42.9%, 1.0248 44.4%, 1.0227 46%, 1.0204 47.6%, 1.018 49.2%, 1.0156 50.8%, 1.0134 52.4%, 1.0112 54%, 1.0093 55.6%, 1.0075 57.1%, 1.006 58.7%, 1.0046 60.3%, 1.0035 61.9%, 1.0025 63.5%, 1.0017 65.1%, 1.001 66.7%, 1.0005 68.3%, 1 69.8%, 0.9997 71.4%, 0.9995 73%, 0.9994 74.6%, 0.9993 76.2%, 0.9992 77.8%, 0.9992 79.4%, 0.9992 81%, 0.9992 82.5%, 0.9993 84.1%, 0.9994 85.7%, 0.9994 87.3%, 0.9995 88.9%, 0.9996 90.5%, 0.9996 92.1%, 0.9997 93.7%, 0.9997 95.2%, 0.9998 96.8%, 0.9998 98.4%, 1);
+  --ease-spring-lg: linear(0, 0.0167 1.6%, 0.0615 3.2%, 0.1269 4.8%, 0.2064 6.3%, 0.2945 7.9%, 0.3865 9.5%, 0.4785 11.1%, 0.5677 12.7%, 0.6518 14.3%, 0.7291 15.9%, 0.7987 17.5%, 0.8599 19%, 0.9125 20.6%, 0.9567 22.2%, 0.9929 23.8%, 1.0216 25.4%, 1.0434 27%, 1.0592 28.6%, 1.0698 30.2%, 1.0758 31.7%, 1.0781 33.3%, 1.0774 34.9%, 1.0744 36.5%, 1.0696 38.1%, 1.0636 39.7%, 1.0568 41.3%, 1.0497 42.9%, 1.0425 44.4%, 1.0354 46%, 1.0287 47.6%, 1.0226 49.2%, 1.017 50.8%, 1.012 52.4%, 1.0078 54%, 1.0042 55.6%, 1.0012 57.1%, 0.9988 58.7%, 0.997 60.3%, 0.9956 61.9%, 0.9947 63.5%, 0.9942 65.1%, 0.9939 66.7%, 0.9939 68.3%, 0.9941 69.8%, 0.9945 71.4%, 0.9949 73%, 0.9954 74.6%, 0.996 76.2%, 0.9965 77.8%, 0.9971 79.4%, 0.9976 81%, 0.9981 82.5%, 0.9986 84.1%, 0.999 85.7%, 0.9993 87.3%, 0.9996 88.9%, 0.9999 90.5%, 1.0001 92.1%, 1.0002 93.7%, 1.0003 95.2%, 1.0004 96.8%, 1.0004 98.4%, 1);
+  --ease-spring-x: linear(0, 0.0166 1.6%, 0.0605 3.2%, 0.124 4.8%, 0.2004 6.3%, 0.2843 7.9%, 0.3713 9.5%, 0.4579 11.1%, 0.5415 12.7%, 0.62 14.3%, 0.6922 15.9%, 0.7573 17.5%, 0.8149 19%, 0.8649 20.6%, 0.9074 22.2%, 0.943 23.8%, 0.972 25.4%, 0.9951 27%, 1.013 28.6%, 1.0262 30.2%, 1.0356 31.7%, 1.0416 33.3%, 1.0449 34.9%, 1.046 36.5%, 1.0454 38.1%, 1.0434 39.7%, 1.0406 41.3%, 1.0371 42.9%, 1.0333 44.4%, 1.0293 46%, 1.0253 47.6%, 1.0214 49.2%, 1.0178 50.8%, 1.0145 52.4%, 1.0114 54%, 1.0087 55.6%, 1.0064 57.1%, 1.0044 58.7%, 1.0028 60.3%, 1.0014 61.9%, 1.0003 63.5%, 0.9995 65.1%, 0.9988 66.7%, 0.9984 68.3%, 0.9981 69.8%, 0.9979 71.4%, 0.9979 73%, 0.9979 74.6%, 0.998 76.2%, 0.9981 77.8%, 0.9983 79.4%, 0.9985 81%, 0.9986 82.5%, 0.9988 84.1%, 0.999 85.7%, 0.9992 87.3%, 0.9993 88.9%, 0.9995 90.5%, 0.9996 92.1%, 0.9997 93.7%, 0.9998 95.2%, 0.9999 96.8%, 0.9999 98.4%, 1);
+  --ease-decel: cubic-bezier(.1, .9, .2, 1);
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --ease-in: cubic-bezier(.4, 0, 1, 1);
+  --ease-out-quick: cubic-bezier(.2, 0, .4, 1);
+  --shift-xs: 8px;
+  --shift-sm: 16px;
+  --shift-md: 28px;
+  --shift-lg: 48px;
+  --shift-xl: 72px;
+  --z-base: 1;                                 /* 普通内容 */
+  --z-card: 10;                                /* 卡片浮起 */
+  --z-sticky: 100;                             /* 页头/吸顶 */
+  --z-mask: 940;                               /* 遮罩 */
+  --z-drawer: 950;                             /* 抽屉 / 登录 */
+  --z-modal: 960;                              /* 档位弹层 */
+  --z-sheet: 970;                              /* 公告 / 大弹层 */
+  --z-toast: 980;                              /* 提示浮层 */
+  --z-overlay: 990;                            /* 必须盖住一切 */
+  --accent: #6b7cff;                           /* 主紫蓝 */
+  --accent-2: #8b5cf6;                         /* 紫 */
+  --accent-3: #38bdf8;                         /* 青蓝 */
+  --glass-bg: rgba(255, 255, 255, .62);
+  --glass-bg-strong: rgba(255, 255, 255, .78);
+  --glass-border: rgba(255, 255, 255, .45);
+  --glass-shadow: 0 8px 32px rgba(31, 38, 135, .18);
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+  --shadow-sm: 0 2px 8px rgba(31, 38, 135, .08);
+  --shadow-md: 0 6px 20px rgba(31, 38, 135, .12);
+  --shadow-lg: 0 14px 44px rgba(31, 38, 135, .18);
+  --bg: #eef2ff;
+  --bg-gradient: linear-gradient(135deg, #eef2ff 0%, #f8fafc 50%, #f0f7ff 100%);
+  --card: rgba(255, 255, 255, .45);
+  --border: rgba(255, 255, 255, .55);          /* 细白边，玻璃感 */
+  --border-strong: rgba(255, 255, 255, .65);
+  --radius: var(--radius-lg);                  /* 大圆角 20px */
+  --shadow: var(--shadow-md);                  /* 柔和阴影 */
+  --surface-2: rgba(107, 124, 255, .10);
+  --surface-3: rgba(255, 255, 255, .5);
+  --surface-4: rgba(255, 255, 255, .6);
+  --tint: rgba(107, 124, 255, .12);            /* 主色淡染 = 蓝紫 */
+  --tint-strong: rgba(107, 124, 255, .16);
+  --text: #1e2a3a;
+  --text-muted: #5a6a7a;
+  --primary: #6b7cff;
+  --primary-hover: #5a6cf0;
+  --primary-press: #4a5ce0;
+}
+
+
+/* ============================================================
+   通用工具类（JS 里旧的内联样式，重构后改用这些 class）
+   ============================================================ */
+
+/* 进入动画：从下方浮起 + 淡入（decelerate，不弹） */
+.fx-enter-up {
+  animation: fxEnterUp var(--dur-base) var(--ease-decel) both;
+}
+/* 进入动画：从侧面进入 */
+.fx-enter-left {
+  animation: fxEnterLeft var(--dur-base) var(--ease-decel) both;
+}
+.fx-enter-right {
+  animation: fxEnterRight var(--dur-base) var(--ease-decel) both;
+}
+/* 强调：到位带轻微回弹（spring-sm，5%） */
+.fx-emphasize {
+  animation: fxEmphasize var(--dur-base) var(--ease-spring-sm) both;
+}
+/* 落位：物理感（弹窗/抽屉用，spring-lg 强回弹） */
+.fx-spring {
+  animation: fxSpring var(--dur-motion) var(--ease-spring-lg) both;
+}
+/* 侧面切入：抽屉/面板用，横向回弹 */
+.fx-spring-x {
+  animation: fxSpringX var(--dur-motion) var(--ease-spring-x) both;
+}
+/* 淡入 */
+.fx-fade-in {
+  animation: fxFadeIn var(--dur-base) var(--ease-decel) both;
+}
+/* 退出 */
+.fx-out-down {
+  animation: fxOutDown var(--dur-fast) var(--ease-in) both;
+}
+.fx-out-up {
+  animation: fxOutUp var(--dur-fast) var(--ease-in) both;
+}
+
+/* 缩放反馈（按压/强调用） */
+.fx-scale-in {
+  animation: fxScaleIn var(--dur-micro) var(--ease-spring-sm) both;
+}
+
+/* 【新增】活力工具类 —— MIUI 的弹性感 */
+/* 弹跳入场：适合强调元素（主按钮、封面标题） */
+.fx-bounce-in {
+  animation: fxBounceIn var(--dur-hero) var(--ease-spring-lg) both;
+}
+/* 错落浮起：卡片列表，带 spring 回弹 */
+.fx-stagger-up {
+  animation: fxStaggerUp var(--dur-motion) var(--ease-spring) both;
+}
+/* 按下反馈（主动触发类）：模拟物理按压的回弹 */
+.fx-press {
+  animation: fxPress var(--dur-micro) var(--ease-spring-sm) both;
+}
+
+/* 【从按钮展开】像手机桌面点开 App —— 从触发点 origin 放大展开 */
+.fx-appear {
+  animation: fxAppear var(--dur-motion) var(--ease-spring) both;
+}
+
+/* 【从按钮收起】反向，收回到触发点 */
+.fx-disappear {
+  animation: fxDisappear var(--dur-motion) var(--ease-in) both;
+}
+
+/* ============================================================
+   延迟工具（做"错落"入场，像 MIUI 的级联）
+   ============================================================ */
+.fx-delay-1 { animation-delay: 40ms; }
+.fx-delay-2 { animation-delay: 90ms; }
+.fx-delay-3 { animation-delay: 140ms; }
+.fx-delay-4 { animation-delay: 190ms; }
+.fx-delay-5 { animation-delay: 240ms; }
+
+/* ============================================================
+   @keyframes —— 统一动效语法的实现
+   ============================================================ */
+
+/* 下方浮起：opacity 0 → 1，translateY 32px → 0，轻微缩放 */
+@keyframes fxEnterUp {
+  from { opacity: 0; transform: translateY(var(--shift-md)) scale(.99); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes fxEnterLeft {
+  from { opacity: 0; transform: translateX(calc(-1 * var(--shift-lg))); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fxEnterRight {
+  from { opacity: 0; transform: translateX(var(--shift-lg)); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* 强调：到位后轻微回弹（spring-sm，5% 过冲） */
+@keyframes fxEmphasize {
+  0%   { opacity: 0; transform: scale(.9); }
+  65%  { opacity: 1; transform: scale(1.045); }
+  82%  { transform: scale(.99); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* 物理落位：强回弹（spring-lg，20% 过冲 + 阻尼收敛） */
+@keyframes fxSpring {
+  0%   { opacity: 0; transform: translateY(-14vh) scale(.92); }
+  45%  { opacity: 1; transform: translateY(3%) scale(1.05); }
+  62%  { transform: translateY(-2%) scale(.985); }
+  78%  { transform: translateY(1%) scale(1.012); }
+  90%  { transform: translateY(-.5%) scale(.998); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 侧面切入：横向回弹（抽屉/面板） */
+@keyframes fxSpringX {
+  0%   { opacity: 0; transform: translateX(var(--shift-xl)) scale(.98); }
+  50%  { opacity: 1; transform: translateX(-2%) scale(1.01); }
+  70%  { transform: translateX(1%) scale(.995); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+/* 弹跳入场：强调元素，大回弹（封面/主按钮） */
+@keyframes fxBounceIn {
+  0%   { opacity: 0; transform: translateY(24px) scale(.85); }
+  50%  { opacity: 1; transform: translateY(-2%) scale(1.06); }
+  68%  { transform: translateY(0) scale(.96); }
+  82%  { transform: scale(1.02); }
+  92%  { transform: scale(.995); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 错落浮起：卡片列表，spring 回弹 */
+@keyframes fxStaggerUp {
+  0%   { opacity: 0; transform: translateY(18px) scale(.97); }
+  60%  { opacity: 1; transform: translateY(-1%) scale(1.015); }
+  80%  { transform: translateY(.5%) scale(.995); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 按下反馈：模拟物理按压回弹 */
+@keyframes fxPress {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(.94); }
+  70%  { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+/* 从按钮展开：用 JS 设置的 --appear-dx/dy 做位移动画，
+   起点 = 弹窗中心对到按钮中心（scale 小），终点 = 窗口中心（scale 1） */
+@keyframes fxAppear {
+  0%   {
+    opacity: 0;
+    transform: translate(var(--appear-dx, 0), var(--appear-dy, 0)) scale(.55);
+  }
+  62%  {
+    opacity: 1;
+    transform: translate(0, 0) scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+/* 收起：收回按钮，反向（同位移） */
+@keyframes fxDisappear {
+  0%   {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--appear-dx, 0), var(--appear-dy, 0)) scale(.55);
+  }
+}
+
+@keyframes fxFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fxFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes fxOutDown {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(var(--shift-md)) scale(.99); }
+}
+
+@keyframes fxOutUp {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(calc(-1 * var(--shift-md))) scale(.99); }
+}
+
+@keyframes fxScaleIn {
+  from { transform: scale(.96); }
+  to   { transform: scale(1); }
+}
+
+/* ============================================================
+   环境光（MIUI 12.5 标志性背景动效）
+   —— 背景渐变缓慢推移，随主题色联动，用 CSS 变量控制
+   ============================================================ */
+@keyframes ambientDrift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.ambient-bg {
+  background: linear-gradient(
+    120deg,
+    color-mix(in srgb, var(--accent, #ff7a1a) 12%, transparent),
+    color-mix(in srgb, var(--accent-2, #4a90d9) 10%, transparent),
+    color-mix(in srgb, var(--accent, #ff7a1a) 8%, transparent)
+  );
+  background-size: 200% 200%;
+  animation: ambientDrift 16s var(--ease-out) infinite alternate;
+}
+
+/* ============================================================
+   性能提示（重要）
+   ============================================================
+   只对 transform / opacity 做动画（GPU 合成，不触发重排）。
+   避免对 width / height / top / left 做动画。
+   需要位移的用 transform: translate，不要用 top/left。
+   大量动画时加 will-change，但别滥用（会占内存）。
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================================
+   视觉语言 —— MIUI 12.5 流光渐变（V1.9.EXP 追加）
+   ------------------------------------------------------------
+   配色：蓝紫流光渐变（主色 + 辅色），随主题可调
+   形状：大圆角 16~24px
+   质感：玻璃拟态（blur + 半透明 + 细边框）+ 轻拟物（柔和阴影）
+   ============================================================ */
+
+
+/* ============================================================
+   玻璃拟态卡片（MIUI 12.5 的标志性格调）
+   ============================================================ */
+.glass-card {
+  background: var(--glass-bg);
+  background-image: linear-gradient(to bottom, rgba(255,255,255,.4), rgba(255,255,255,0) 26%);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow), inset 0 1px 0 rgba(255, 255, 255, .5);
+}
+
+.glass-card--strong {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+}
+
+/* 渐变主按钮（替换现在的纯色橙） */
+.gradient-btn {
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-3) 50%, var(--accent-2) 100%);
+  background-size: 200% 200%;
+  border: none;
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 20px rgba(107, 124, 255, .35);
+  transition: transform var(--dur-base) var(--ease-spring-sm),
+              box-shadow var(--dur-fast) var(--ease-decel),
+              background-position var(--dur-base) var(--ease-decel);
+}
+.gradient-btn:hover {
+  background-position: 100% 50%;
+  box-shadow: 0 10px 30px rgba(107, 124, 255, .45);
+  transform: translateY(-3px) scale(1.02);
+}
+.gradient-btn:active {
+  transform: scale(.95) translateY(1px);
+  box-shadow: 0 4px 14px rgba(107, 124, 255, .3);
+  transition-duration: var(--dur-micro);
+}
+
+/* 流光背景（整个页面） */
+.ambient-bg--gradient {
+  background: linear-gradient(
+    135deg,
+    var(--accent) 0%,
+    var(--accent-2) 33%,
+    var(--accent-3) 66%,
+    var(--accent) 100%
+  );
+  background-size: 300% 300%;
+  animation: ambientDrift 18s var(--ease-out) infinite alternate;
+}
+
+/* ============================================================
+   页面公共元素（重构后 style.css 里的部分会被这里覆盖）
+   ============================================================ */
+
+/* 页头：玻璃吸顶 */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: var(--glass-bg-strong);
+  background-image: linear-gradient(to bottom, rgba(255,255,255,.42), rgba(255,255,255,0) 32%);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+/* 主内容区 */
+.app-main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* 面板：玻璃卡片，悬停轻浮起（spring 回弹） */
+.panel-glass {
+  background: var(--glass-bg);
+  background-image: linear-gradient(to bottom, rgba(255,255,255,.38), rgba(255,255,255,0) 24%);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, .5);
+  transition: transform var(--dur-base) var(--ease-spring-sm),
+              box-shadow var(--dur-base) var(--ease-decel);
+}
+.panel-glass:hover {
+  transform: translateY(-4px) scale(1.005);
+  box-shadow: var(--shadow-lg);
+}
+
+/* 弹层：玻璃 + 物理落位 */
+.glass-modal {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  animation: fxSpring var(--dur-motion) var(--ease-spring) both;
+}
+/* ============================================================
+   活力光斑背景（解决"素"的问题 —— MIUI 12.5 的缤纷感）
+   ------------------------------------------------------------
+   不是单调浅色渐变，而是几团饱和的彩色模糊光斑在缓慢漂移。
+   用 backdrop-filter 或叠加 pseudo 元素实现，不用 JS。
+   ============================================================ */
+
+/* 前置：页面根容器加这个 class，背后就有光斑 */
+.vibrant-bg {
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(circle at 15% 20%, #f472b6 0%, transparent 42%),
+              radial-gradient(circle at 85% 15%, #38bdf8 0%, transparent 46%),
+              radial-gradient(circle at 70% 82%, #8b5cf6 0%, transparent 46%),
+              radial-gradient(circle at 20% 75%, #34d399 0%, transparent 40%),
+              linear-gradient(135deg, #f3e8ff 0%, #e0f2fe 45%, #fce7f3 100%);
+  background-size: 100% 100%;
+}
+
+/* 光斑层：几团慢慢漂移的明艳色块 */
+.vibrant-bg::before,
+.vibrant-bg::after {
+  content: "";
+  position: fixed;
+  inset: -20%;
+  pointer-events: none;
+  z-index: 0;
+  filter: blur(60px);
+  opacity: .85;
+}
+.vibrant-bg::before {
+  background:
+    radial-gradient(circle at 30% 30%, #f472b6 0%, transparent 30%),
+    radial-gradient(circle at 70% 60%, #8b5cf6 0%, transparent 28%),
+    radial-gradient(circle at 50% 85%, #38bdf8 0%, transparent 25%),
+    radial-gradient(circle at 15% 70%, #fbbf24 0%, transparent 22%);
+  animation: blobsDrift 22s ease-in-out infinite alternate;
+}
+.vibrant-bg::after {
+  background:
+    radial-gradient(circle at 80% 25%, #38bdf8 0%, transparent 24%),
+    radial-gradient(circle at 25% 75%, #f472b6 0%, transparent 26%),
+    radial-gradient(circle at 60% 40%, #34d399 0%, transparent 22%);
+  animation: blobsDrift2 28s ease-in-out infinite alternate;
+}
+
+/* 保证内容在光斑之上 */
+.vibrant-bg > * { position: relative; z-index: var(--z-card); }
+
+@keyframes blobsDrift {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(-4%, 4%) scale(1.08); }
+  100% { transform: translate(3%, -3%) scale(.96); }
+}
+@keyframes blobsDrift2 {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(5%, -4%) scale(1.1); }
+  100% { transform: translate(-3%, 3%) scale(.94); }
+}
+
+/* 玻璃卡片在光斑上要真的"透"，给内容加轻微背衬 */
+.vibrant-bg .glass-card,
+.vibrant-bg .panel-glass,
+.vibrant-bg .app-header {
+  background: rgba(255, 255, 255, .55);
+  backdrop-filter: blur(24px) saturate(170%);
+}
+
+/* ============================================================
+   标准视觉覆盖（V1.9.EXP · 统一蓝紫标准）
+   ------------------------------------------------------------
+   用户决定：先统一成蓝紫流光这一套，确立标准，主题切换后重构。
+   所以这里覆盖 style.css 的暖色主题（html[data-theme]）。
+   因为 anim.css 在 style.css 之后引入，同优先级下后者生效。
+   ============================================================ */
+
+/* 统一底色为蓝紫冷色 —— 已并入顶部唯一的 :root（L18），此处不再重复定义，
+   避免同名变量在第二处 :root 被再次覆盖（§48 记录的问题1）。 */
+
+/* 页面整体背景（方案一：均匀柔和的多彩，避免左右冷暖强反差）
+   ------------------------------------------------------------
+   ⚠️ 关键：必须加在 html 上，不能只加在 body（body 有 max-width:1180px）。
+   设计取舍：色块范围收窄 + 饱和度降低 → 卡片透出的颜色接近，不会左粉右青。 */
+html {
+  background:
+    radial-gradient(circle at 20% 15%, rgba(244, 114, 182, .62) 0%, transparent 50%),
+    radial-gradient(circle at 82% 12%, rgba(56, 189, 248, .60) 0%, transparent 53%),
+    radial-gradient(circle at 75% 85%, rgba(139, 92, 246, .54) 0%, transparent 53%),
+    radial-gradient(circle at 18% 80%, rgba(52, 211, 153, .48) 0%, transparent 50%),
+    linear-gradient(135deg, #f0e8ff 0%, #e6f0ff 35%, #eaf6ff 65%, #f4e8ff 100%) !important;
+  background-attachment: fixed;
+  min-height: 100%;
+}
+
+/* body 保持透明，让 html 的全屏多彩背景透出来 */
+body {
+  background: transparent !important;
+}
+/* ============================================================
+   已存在 class 的视觉覆盖（不碰功能性，只改视觉/动效）
+   ------------------------------------------------------------
+   这些 class 在 index.html 已存在，旧 style.css 有功能规则。
+   这里只覆盖它们的视觉（颜色/圆角/阴影/玻璃/动画），
+   不动布局、定位、拖拽、禁用态等功能性规则。
+   ============================================================ */
+
+/* 页头：去掉白色玻璃框（用户反馈不要白底条），只保留内容排版 */
+.page-header {
+  background: transparent;
+  background-image: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* 状态条：统一玻璃白底，只保留状态点的颜色语义（去掉浅绿/浅红大块底色） */
+.status-bar,
+.status-ok,
+.status-error,
+.status-loading {
+  background: rgba(255, 255, 255, .45) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, .55) !important;
+  border-radius: var(--radius-pill) !important;
+  color: var(--text-muted) !important;
+}
+/* 状态点保留语义色 */
+.status-ok .status-dot { background: #17a34a !important; }
+.status-error .status-dot { background: #d93a3a !important; }
+.status-loading .status-dot { background: #e8a33d !important; }
+.mode-btn {
+  border-radius: var(--radius-pill);
+  transition: background var(--dur-fast) var(--ease-decel), color var(--dur-fast) var(--ease-decel),
+              transform var(--dur-micro) var(--ease-spring-sm);
+  background: transparent;
+  color: var(--text-muted, #6b7683);
+}
+.mode-btn:hover { color: var(--text, #1f2328); }
+.mode-btn:active { transform: scale(.96); }
+.mode-btn.is-active {
+  background: rgba(255, 255, 255, .70);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+  font-weight: 600;
+}
+
+/* 主面板：玻璃卡片 + spring 悬停 */
+.panel {
+  background: rgba(255, 255, 255, .45);
+  background-image: linear-gradient(to bottom, rgba(255,255,255,.4), rgba(255,255,255,0) 24%);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, .5);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, .5);
+  transition: transform var(--dur-base) var(--ease-spring-sm), box-shadow var(--dur-base) var(--ease-decel);
+}
+.panel:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+
+/* 上传区：大圆角 + 悬停玻璃 */
+.drop-zone {
+  border-radius: var(--radius-lg);
+  transition: border-color var(--dur-fast) var(--ease-decel), background var(--dur-fast) var(--ease-decel), transform var(--dur-micro) var(--ease-spring-sm);
+}
+.drop-zone:hover { background: rgba(107, 124, 255, .06); transform: scale(1.005); }
+.drop-zone:active { transform: scale(.99); }
+
+/* 主按钮（开始识别）：蓝紫渐变 + spring 按压 */
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2), var(--accent-3));
+  background-size: 200% 100%;
+  border: none;
+  border-radius: var(--radius-md);
+  box-shadow: 0 6px 20px rgba(107, 124, 255, .35);
+  transition: transform var(--dur-base) var(--ease-spring-sm), box-shadow var(--dur-fast) var(--ease-decel), background-position var(--dur-base) var(--ease-decel);
+}
+.btn-primary:hover:not(:disabled) {
+  background-position: 100% 0;
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 0 10px 28px rgba(107, 124, 255, .45);
+}
+.btn-primary:active:not(:disabled) {
+  transform: scale(.96) translateY(1px);
+  transition-duration: var(--dur-micro);
+}
+.btn-primary:disabled {
+  background: rgba(107, 124, 255, .25);
+  box-shadow: none;
+}
+
+/* 次级按钮（选择图片/示例图片）：蓝紫淡色胶囊，不再纯白 */
+.btn-ghost {
+  background: rgba(107, 124, 255, .12) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(107, 124, 255, .30) !important;
+  border-radius: var(--radius-pill) !important;
+  color: var(--accent) !important;
+  font-weight: 500;
+  transition: transform var(--dur-micro) var(--ease-spring-sm), background var(--dur-fast) var(--ease-decel), box-shadow var(--dur-fast) var(--ease-decel);
+}
+.btn-ghost:hover {
+  background: rgba(107, 124, 255, .22) !important;
+  box-shadow: 0 4px 14px rgba(107, 124, 255, .22);
+}
+.btn-ghost:active { transform: scale(.95); }
+
+/* 页头里的圆形/胶囊按钮（速度优先/分析/设置等） */
+.settings-btn {
+  background: rgba(255, 255, 255, .6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, .4);
+  border-radius: var(--radius-pill);
+  color: var(--text, #475569);
+  transition: transform var(--dur-micro) var(--ease-spring-sm), background var(--dur-fast) var(--ease-decel), box-shadow var(--dur-fast) var(--ease-decel);
+}
+.settings-btn:hover { background: rgba(255, 255, 255, .85); box-shadow: var(--shadow-sm); }
+.settings-btn:active { transform: scale(.95); }
+/* ============================================================
+   覆盖 style.css 的关键变量（让所有卡片统一成 MIUI 视觉）
+   ------------------------------------------------------------
+   style.css 里 .panel/.stats-box/.trend-box/.info-box/.status-bar 等
+   全部用 var(--card)/var(--border)/var(--radius)/var(--shadow)。
+   所以这里覆盖这些变量，就能让所有卡片统一换成：
+   大圆角 + 玻璃半透明 + 柔和阴影。
+   anim.css 在 style.css 之后引入，同优先级下这些值生效。
+   ============================================================ */
+
+/* 覆盖 style.css 的 :root 变量（同优先级，后引入生效） */
+
+/* 让所有卡片真的有"玻璃"质感（须在覆盖变量后，卡片才有半透明底） */
+.panel,
+.stats-box,
+.trend-box,
+.info-box,
+.group-box,
+.status-bar,
+.batch-panel,
+.gallery-wrap,
+.drawer,
+.auth-panel,
+.changelog-modal,
+.preset-modal,
+.ana-modal {
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+
+/* 主文字色也统一为深蓝灰（更配冷色） */
+
+/* 主按钮等用蓝紫（覆盖 style.css 的橙色 --primary） */
+/* ============================================================
+   隐藏旧的背景装饰块（.fx-shape / .fx-blob）
+   旧 style.css 的淡蓝几何块 + 白色毛玻璃片，跟新多彩光斑背景
+   重叠，显得突兀。这里隐藏它们，让多彩光斑背景纯净接管。
+   ============================================================ */
+.page-fx .fx-shape,
+.page-fx .fx-blob {
+  display: none !important;
+}
+
+/* 开始识别按钮：强制用蓝紫渐变（覆盖 style.css 的 width:100% 和纯色） */
+.btn-primary {
+  background: linear-gradient(135deg, #6b7cff 0%, #8b5cf6 50%, #38bdf8 100%) !important;
+  background-size: 200% 100% !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: 0 6px 20px rgba(107, 124, 255, .35) !important;
+}
+.btn-primary:hover:not(:disabled) {
+  background-position: 100% 0;
+  transform: translateY(-2px);
+}
+.btn-primary:active:not(:disabled) {
+  transform: scale(.97);
+  transition-duration: var(--dur-micro);
+}
+.btn-primary:disabled {
+  background: rgba(107, 124, 255, .25) !important;
+  box-shadow: none !important;
+}
+/* ============================================================
+   弹窗玻璃化 + spring 落位（B 步骤：不改 JS，视觉/动画跟上）
+   ------------------------------------------------------------
+   所有弹窗/面板用 var(--card)（已是玻璃半透明），这里加
+   backdrop-filter 让它们真"透"，并把打开动画换成新的 spring 落位。
+   ============================================================ */
+
+/* 玻璃弹窗：半透明 + 模糊 + 大圆角 + 柔和阴影 */
+.auth-panel,
+.drawer,
+.changelog-modal,
+.preset-modal,
+.ana-modal,
+.ios-guide-modal {
+  background: rgba(255, 255, 255, .62) !important;
+  backdrop-filter: blur(28px) saturate(170%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(170%) !important;
+  border: 1px solid rgba(255, 255, 255, .6) !important;
+  box-shadow: 0 24px 64px rgba(31, 38, 135, .22),
+              inset 0 1px 0 rgba(255, 255, 255, .6) !important;
+  /* 顶部内发光：玻璃受光面，增强「是一块实体玻璃」的物理感；
+     inset 顶边高光让光「吃到玻璃边缘」，呈一道细亮边 */
+  background-image: linear-gradient(to bottom, rgba(255,255,255,.46), rgba(255,255,255,0) 26%) !important;
+}
+
+/* 打开动画换成 spring 落位（覆盖旧 fxPopUp） */
+.auth-panel.is-open,
+.changelog-modal.is-open,
+.preset-modal.is-open,
+.ana-modal.is-open,
+.ios-guide-modal.is-open {
+  animation: fxSpring var(--dur-motion) var(--ease-spring-lg) both !important;
+}
+
+/* 抽屉：改成横向 spring 切入（覆盖旧 translateX 侧滑） */
+.drawer.is-open {
+  animation: fxSpringX var(--dur-motion) var(--ease-spring-x) both !important;
+}
+
+/* ★ WAAPI 打开的弹窗：入场已完成，不再重播 fxSpring，避免"落位后抖回"二次运动。
+   只关整个弹窗的 animation，不影响 .is-open 内部子元素的级联入场（如 .auth-field）。
+   【此规则须排在 .is-open 之后才生效】CSS fallback 打开的（游客门禁/抽屉老逻辑）
+   不加 waapi-done，仍靠 .is-open 的 fxSpring/fxSpringX 入场，不受影响。 */
+.auth-panel.waapi-done,
+.changelog-modal.waapi-done,
+.preset-modal.waapi-done,
+.ana-modal.waapi-done,
+.ios-guide-modal.waapi-done,
+.drawer.waapi-done {
+  animation: none !important;
+}
+
+/* 遮罩：淡入 + 景深（背景虚化，MIUI 12.5 弹层浮起时的景深感）
+   ⚠️ backdrop-filter 写在基类（不是只 .is-open），这样 .is-open 和 .is-closing 都有 blur；
+   退场时遮罩整体 opacity 1→0，模糊随 opacity 一同渐弱 —— 背景是"慢慢清晰"，
+   而不是"啪地清晰"。blur 不随 opacity 插值，靠 opacity 动画带动整层淡出即可。 */
+.drawer-mask {
+  background: rgba(20, 26, 34, .30);
+  backdrop-filter: blur(10px) saturate(130%);
+  -webkit-backdrop-filter: blur(10px) saturate(130%);
+}
+.drawer-mask.is-open {
+  animation: fxFadeIn var(--dur-base) var(--ease-decel) both !important;
+}
+/* V1.9.EXP：遮罩退场（渐出），模糊随 opacity 渐弱，不是瞬间消失 */
+.drawer-mask.is-closing {
+  animation: fxFadeOut var(--dur-base) var(--ease-decel) both !important;
+}
+
+/* 弹窗内部的标题/字段/按钮：级联错落入场（覆盖旧 fxInUp/fxFadeIn） */
+.auth-panel.is-open .auth-head,
+.auth-panel.is-open .auth-field,
+.auth-panel.is-open .auth-agree,
+.auth-panel.is-open .auth-submit {
+  animation: fxEnterUp var(--dur-base) var(--ease-spring-sm) both !important;
+}
+.auth-panel.is-open .auth-field:nth-of-type(1) { animation-delay: 40ms; }
+.auth-panel.is-open .auth-field:nth-of-type(2) { animation-delay: 90ms; }
+.auth-panel.is-open .auth-field:nth-of-type(3) { animation-delay: 140ms; }
+.auth-panel.is-open .auth-submit { animation-delay: 190ms; }
+
+.drawer.is-open .set-group { animation: fxEnterUp var(--dur-base) var(--ease-spring-sm) both !important; }
+.drawer.is-open .set-group:nth-of-type(1) { animation-delay: 40ms; }
+.drawer.is-open .set-group:nth-of-type(2) { animation-delay: 90ms; }
+.drawer.is-open .set-group:nth-of-type(3) { animation-delay: 140ms; }
+/* ============================================================
+   封面页（cover）专属设计 —— 静谧 → 点亮
+   ------------------------------------------------------------
+   理念：从"我来了"到"我准备好用"。
+   渐进呈现：logo→标题→副标题→芯片→按钮 按序浮现。
+   材质：更轻盈的玻璃（更透、更朦胧、更大圆角）。
+   节奏：更慢（hero 800ms），延迟梯度做"电影开场"层次。
+   ============================================================ */
+
+/* 封面：玻璃 + 全屏多彩光斑 + 入场（合并唯一的 .cover 规则，2026-11-22）
+   ------------------------------------------------------------
+   ⚠️ background 必须带 !important：style.css L1989 的 .cover 也声明了
+   background: var(--bg) !important + 淡渐变，且 style.css 先加载；anim.css
+   要压过它只能用同样的 !important。此前这里拆成两条 .cover 规则
+   （玻璃 一条 + 多彩渐变 一条）造成歧义，现已合并为一条。 */
+.cover {
+  background:
+    radial-gradient(circle at 15% 20%, #f472b6 0%, transparent 42%),
+    radial-gradient(circle at 85% 15%, #38bdf8 0%, transparent 45%),
+    radial-gradient(circle at 70% 82%, #8b5cf6 0%, transparent 44%),
+    radial-gradient(circle at 20% 78%, #34d399 0%, transparent 40%),
+    radial-gradient(circle at 55% 45%, #fbbf24 0%, transparent 28%),
+    linear-gradient(135deg, #f3e8ff 0%, #e0f2fe 45%, #fce7f3 100%) !important;
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  animation: fxFadeIn 380ms var(--ease-out) both;
+}
+
+.cover-inner {
+  background: rgba(255, 255, 255, .5) !important;
+  background-image: linear-gradient(to bottom, rgba(255,255,255,.46), rgba(255,255,255,0) 24%) !important;
+  backdrop-filter: blur(28px) saturate(170%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(170%) !important;
+  border: 1px solid rgba(255, 255, 255, .6) !important;
+  border-radius: 28px !important;
+  box-shadow: 0 30px 80px rgba(31, 38, 135, .25) !important;
+}
+
+/* logo：弹跳入场 */
+.cover-logo {
+  animation: fxBounceIn var(--dur-hero) var(--ease-spring-lg) both;
+}
+
+/* 大标题：渐变蓝紫 + 逐字错落浮起 */
+.cover-title {
+  background: linear-gradient(135deg, #6b7cff 0%, #8b5cf6 50%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.cover-title .ch {
+  display: inline-block;
+  animation: fxStaggerUp var(--dur-motion) var(--ease-spring) both;
+}
+.cover-title .ch:nth-of-type(1) { animation-delay: 120ms; }
+.cover-title .ch:nth-of-type(2) { animation-delay: 180ms; }
+.cover-title .ch:nth-of-type(3) { animation-delay: 240ms; }
+.cover-title .ch:nth-of-type(4) { animation-delay: 300ms; }
+
+/* 副标题 / 描述：随后淡入 */
+.cover-sub {
+  animation: fxFadeIn var(--dur-base) var(--ease-decel) both;
+  animation-delay: 240ms;
+}
+.cover-desc {
+  animation: fxFadeIn var(--dur-base) var(--ease-decel) both;
+  animation-delay: 320ms;
+}
+
+/* 芯片标签：级联浮现 */
+.cover-chips {
+  animation: fxEnterUp var(--dur-base) var(--ease-spring-sm) both;
+  animation-delay: 360ms;
+}
+.cover-chip {
+  background: rgba(255, 255, 255, .6);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, .5);
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  transition: transform var(--dur-micro) var(--ease-spring-sm), background var(--dur-fast) var(--ease-decel);
+}
+.cover-chip:hover { background: rgba(255, 255, 255, .85); transform: translateY(-1px); }
+
+/* 开始按钮：就绪时弹性落进来 */
+.cover-start {
+  background: linear-gradient(135deg, #6b7cff, #8b5cf6, #38bdf8);
+  background-size: 200% 100%;
+  border: none;
+  border-radius: var(--radius-pill);
+  box-shadow: 0 10px 30px rgba(107, 124, 255, .4);
+  transition: transform var(--dur-base) var(--ease-spring-sm), box-shadow var(--dur-fast) var(--ease-decel), background-position var(--dur-base) var(--ease-decel);
+}
+.cover-start:not(:disabled) {
+  animation: fxSpring var(--dur-motion) var(--ease-spring-lg) both;
+}
+.cover-start:hover:not(:disabled) {
+  background-position: 100% 0;
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 14px 36px rgba(107, 124, 255, .5);
+}
+.cover-start:active:not(:disabled) {
+  transform: scale(.96);
+  transition-duration: var(--dur-micro);
+}
+.cover-start:disabled {
+  background: rgba(107, 124, 255, .3);
+  box-shadow: none;
+}
+/* 封面背景：全屏多彩光斑（方向 C）
+   ------------------------------------------------------------
+   ⚠️ 这里必须让 .cover 自己带全屏多彩渐变，不能只靠 ::before。
+   旧 style.css 的 ::before/::after 是 46vmax 的几何块（左上/右下各一块），
+   只在局部有颜色，其余地方露出 .cover 的白底 → 看起来"中间彩色两边白"。
+   所以：.cover 铺全屏多彩渐变 + 两个伪元素隐藏。 */
+/* 旧 style.css 的 ::before/::after 是 46vmax 几何块，已在下方隐藏。
+   封面全屏多彩渐变已并入上方唯一的 .cover 规则。 */
+
+/* 旧的几何装饰块：彻底隐藏，避免局部彩色块与全屏渐变打架 */
+.cover::before,
+.cover::after {
+  display: none !important;
+}

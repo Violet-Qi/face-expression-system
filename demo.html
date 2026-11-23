@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>动效语言 Demo · V1.9.EXP</title>
+<link rel="stylesheet" href="css/anim.css">
+<style>
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f4f6f8; margin: 0; padding: 40px; }
+  .demo-box { display: flex; flex-direction: column; gap: 20px; max-width: 420px; }
+  .btn {
+    padding: 14px 24px; border: none; border-radius: 14px; cursor: pointer;
+    font-size: 15px; color: #fff; background: #ff7a1a;
+    transition: transform var(--dur-micro) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+  }
+  .btn:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 8px 24px rgba(255,122,26,.3); }
+  .btn:active { transform: scale(.96) translateY(1px); }
+  .card {
+    background: #fff; border-radius: 16px; padding: 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.06);
+    transition: box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+  }
+  .panel {
+    background: #fff; border-radius: 20px; padding: 32px; text-align: center;
+    box-shadow: 0 12px 40px rgba(0,0,0,.12);
+  }
+  .flex-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  h1 { font-size: 28px; margin: 0 0 6px; }
+  p { color: #6b7280; margin: 0 0 20px; }
+</style>
+</head>
+<body>
+  <div class="demo-box">
+    <div class="panel">
+      <h1>MIUI 动效语言 · Demo</h1>
+      <p>V1.9.EXP 实验版</p>
+      <div class="flex-row" style="justify-content:center">
+        <button class="btn" onclick="demoSpring()">物理落位</button>
+        <button class="btn" onclick="demoEmphasize()">强调过冲</button>
+      </div>
+    </div>
+
+    <div class="card fx-enter-up"><strong>进场上滑</strong> —— fx-enter-up，前快后缓</div>
+    <div class="card fx-enter-up fx-delay-1"><strong>级联上滑</strong> —— 带了 40ms 延迟</div>
+    <div class="card fx-enter-left"><strong>侧向进入</strong> —— fx-enter-left</div>
+
+    <div class="flex-row">
+      <button class="btn" style="background:#4a90d9" onclick="demoRows()">再播一次级联</button>
+    </div>
+  </div>
+
+<script>
+  function demoSpring() {
+    const p = document.querySelector('.panel');
+    p.classList.remove('fx-spring');
+    void p.offsetWidth; // 强制重排，重置动画
+    p.classList.add('fx-spring');
+  }
+  function demoEmphasize() {
+    const p = document.querySelector('.panel');
+    p.classList.remove('fx-emphasize');
+    void p.offsetWidth;
+    p.classList.add('fx-emphasize');
+  }
+  function demoRows() {
+    document.querySelectorAll('.card').forEach((c,i) => {
+      c.classList.remove('fx-enter-up','fx-enter-left','fx-delay-1');
+      void c.offsetWidth;
+      if (i===0) c.classList.add('fx-enter-up');
+      if (i===1) c.classList.add('fx-enter-up','fx-delay-1');
+      if (i===2) c.classList.add('fx-enter-left');
+    });
+  }
+  // 初始级联入场
+  document.querySelectorAll('.card').forEach((c,i) => {
+    c.classList.add('fx-enter-up');
+    if (i===1) c.classList.add('fx-delay-1');
+    if (i===2) c.classList.add('fx-enter-left');
+  });
+</script>
+</body>
+</html>
