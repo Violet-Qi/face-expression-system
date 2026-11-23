@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>千颜万花 · Web 人脸表情识别</title>
-  <meta name="theme-color" content="#6b7cff">
+  <meta name="theme-color" content="#ff7a1a">
   <link rel="manifest" href="manifest.json">
 
   <!-- 图标 -->
-  <link rel="icon" type="image/svg+xml" href="assets/logo.svg?v=1.9.5e17">
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png?v=1.9.5e17">
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png?v=1.9.5e17">
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg?v=1.9next-10">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icon-32.png?v=1.9next-10">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/icon-180.png?v=1.9next-10">
 
   <!-- iOS 全屏（配合"添加到主屏幕"） -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -18,8 +18,8 @@
   <meta name="apple-mobile-web-app-title" content="千颜万花">
   <meta name="mobile-web-app-capable" content="yes">
 
-  <link rel="stylesheet" href="css/style.css?v=1.9.5e17">
-  <link rel="stylesheet" href="css/anim.css?v=1.9.5e17">
+  <link rel="stylesheet" href="css/style.css?v=1.9next-10">
+  <link rel="stylesheet" href="css/features.css?v=1.9next-10">
 </head>
 <body class="fx-anim">
 
@@ -51,9 +51,9 @@
       <svg class="cover-logo" viewBox="0 0 64 64" aria-hidden="true">
         <defs>
           <linearGradient id="coverGrad" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stop-color="#8b9dff"/>
-            <stop offset="0.55" stop-color="#6b7cff"/>
-            <stop offset="1" stop-color="#38bdf8"/>
+            <stop offset="0" stop-color="#ffa64d"/>
+            <stop offset="0.55" stop-color="#ff7a1a"/>
+            <stop offset="1" stop-color="#e85d04"/>
           </linearGradient>
         </defs>
         <g fill="url(#coverGrad)">
@@ -65,7 +65,7 @@
           <path d="M32 7 C 41 16 41 26 32 31 C 23 26 23 16 32 7 Z" transform="rotate(300 32 32)"/>
         </g>
         <circle cx="32" cy="32" r="5.4" fill="#fff"/>
-        <circle cx="32" cy="32" r="2.1" fill="#8b5cf6"/>
+        <circle cx="32" cy="32" r="2.1" fill="#ff7a1a"/>
       </svg>
       <h1 class="cover-title brand" aria-label="千颜万花">
         <span class="ch ch1" aria-hidden="true">千</span><span class="ch ch2" aria-hidden="true">颜</span><span class="ch ch3" aria-hidden="true">万</span><span class="ch ch4" aria-hidden="true">花</span>
@@ -105,9 +105,9 @@
         <svg class="brand-logo" viewBox="0 0 64 64" aria-hidden="true">
           <defs>
             <linearGradient id="brandGrad" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stop-color="#8b9dff"/>
-              <stop offset="0.55" stop-color="#6b7cff"/>
-              <stop offset="1" stop-color="#38bdf8"/>
+              <stop offset="0" stop-color="#ffa64d"/>
+              <stop offset="0.55" stop-color="#ff7a1a"/>
+              <stop offset="1" stop-color="#e85d04"/>
             </linearGradient>
           </defs>
           <g fill="url(#brandGrad)">
@@ -119,14 +119,14 @@
             <path d="M32 7 C 41 16 41 26 32 31 C 23 26 23 16 32 7 Z" transform="rotate(300 32 32)"/>
           </g>
           <circle cx="32" cy="32" r="5.4" fill="#fff"/>
-          <circle cx="32" cy="32" r="2.1" fill="#8b5cf6"/>
+          <circle cx="32" cy="32" r="2.1" fill="#ff7a1a"/>
         </svg>
         <h1 class="brand" aria-label="千颜万花">
           <span class="ch ch1" aria-hidden="true">千</span><span class="ch ch2" aria-hidden="true">颜</span><span class="ch ch3" aria-hidden="true">万</span><span class="ch ch4" aria-hidden="true">花</span>
         </h1>
       </div>
       <p class="subtitle">Web 人脸表情识别</p>
-      <p class="page-meta"><span id="versionLabel">v1.9.5</span>　·　最后更新 2026-11　·　全部计算在浏览器本地完成</p>
+      <p class="page-meta"><span id="versionLabel">v1.9 Next</span>　·　最后更新 2026-11　·　全部计算在浏览器本地完成</p>
     </div>
     <div class="header-actions">
       <!-- 检测精度档位：常驻下拉，像 DSH 的模型选择器 -->
@@ -169,6 +169,7 @@
     <button type="button" id="tabImage" class="mode-btn is-active" role="tab">图片识别</button>
     <button type="button" id="tabCamera" class="mode-btn" role="tab">摄像头实时</button>
     <button type="button" id="tabVideo" class="mode-btn" role="tab">视频文件</button>
+    <button type="button" id="tabCascade" class="mode-btn" role="tab">异构双引擎级联</button>
   </div>
 
   <!-- ============================================================
@@ -180,9 +181,12 @@
        ============================================================ -->
   <div class="page" id="pageImage">
 
-    <!-- 左右双栏：上传 / 结果 -->
+    <!-- 图片页：左列（上传 + 结果竖排）+ 右列（共用信息区，仅图片模式拉上来）。
+         工具类 workspace-image-merge / info-right-col 由 stylist 的 CSS 用
+         #workspaceImage:has(...) 匹配触发左右两列布局。信息区在其它模式时由
+         main.js 移回下方固定的 sharedInfoHome。 -->
     <main class="workspace" id="workspaceImage">
-
+      <div class="workspace-image-merge">
       <!-- 左栏：上传图片 -->
       <section class="panel" id="leftPanel">
         <div class="panel-title">
@@ -237,10 +241,11 @@
         </div>
       </section>
 
-      <!-- 右栏：识别结果 -->
-      <section class="panel">
+      <!-- 左栏第二块：识别结果（默认隐藏；识别后以浮层形式盖在上传区上方） -->
+      <section class="panel result-overlay" id="resultOverlay" hidden>
         <div class="panel-title">
           <span class="panel-icon">🔍</span> <span>识别结果</span><span class="kao">(・ω・)ノ</span>
+          <button type="button" class="btn-ghost result-back-btn" id="backToUploadBtn">← 返回上传图片</button>
         </div>
         <div class="panel-body">
           <div class="canvas-wrap" id="imageCanvasWrap">
@@ -252,6 +257,11 @@
           </div>
         </div>
       </section>
+      </div><!-- /.workspace-image-merge -->
+
+      <!-- 右列：共用信息区（识别信息 / 累计统计 / 表情趋势）。
+           仅图片模式时，main.js 会把下方的 info-box/statsBox/trendBox 移进来。 -->
+      <div class="info-right-col" id="infoRightCol"></div>
     </main>
 
     <!-- 人物分组结果（只在图片模式提供，所以放在图片页里） -->
@@ -342,13 +352,82 @@
   </div>
 
   <!-- ============================================================
+       页面容器四：异构双引擎级联
+       ------------------------------------------------------------
+       face-api（7 类判定）+ MediaPipe（强度/细节展示）并行。
+       判定/统计只用 face-api；MediaPipe 只贡献"是微笑还是大笑"这类强度文案。
+       独立窗口，便于对照两个引擎的结果。
+       ============================================================ -->
+  <div class="page" id="pageCascade" hidden>
+    <main class="workspace" id="workspaceCascade">
+
+      <!-- 左栏：上传图片 -->
+      <section class="panel">
+        <div class="panel-title">
+          <span class="panel-icon">🧬</span> <span>上传图片</span><span class="kao">(＾▽＾)</span>
+        </div>
+        <div class="panel-body">
+          <div id="cascadeDropZone" class="drop-zone">
+            <input type="file" id="cascadeFileInput" accept="image/*" multiple hidden>
+            <div class="drop-inner" id="cascadeDropInner">
+              <div class="drop-icon">＋</div>
+              <p class="drop-text">点击选择图片，或把图片拖到这里</p>
+              <p class="drop-hint">支持 JPG / PNG / WebP / GIF　·　单张不超过 10 MB</p>
+              <button type="button" class="btn-ghost" id="cascadePickBtn">选择图片</button>
+              <button type="button" class="btn-ghost" id="cascadeSampleBtn">用示例图片</button>
+            </div>
+            <img id="cascadeSourceImg" class="preview-img" alt="上传的图片" hidden>
+            <div class="img-bar" id="cascadeImgBar" hidden>
+              <button type="button" class="btn-ghost" id="cascadeReplaceBtn">重新选择</button>
+              <button type="button" class="btn-ghost" id="cascadeClearBtn">清空</button>
+            </div>
+          </div>
+
+          <!-- 引擎开关说明 -->
+          <div class="cascade-note" id="cascadeNote">
+            <p><b>它和图片识别有什么不同？</b></p>
+            <p>图片识别用 <b>face-api</b> 判断"是什么表情"（7 类）；级联在它基础上，再并行跑一个 <b>MediaPipe</b> 关键点模型，用 52 维面部肌肉数据判断"<b>有多强烈</b>——是微微一笑还是开怀大笑"。</p>
+            <p class="cascade-note-hint">判定仍以 face-api 为准，MediaPipe 只补充强度细节，不影响统计口径。</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 右栏：级联结果 -->
+      <section class="panel">
+        <div class="panel-title">
+          <span class="panel-icon">🔍</span> <span>级联识别结果</span><span class="kao">(・ω・)ノ</span>
+        </div>
+        <div class="panel-body">
+          <div class="cascade-beta-tag" id="cascadeBetaTag">实验功能 · 未参与正式统计</div>
+          <div class="canvas-wrap" id="cascadeCanvasWrap">
+            <div class="canvas-placeholder" id="cascadePlaceholder">
+              <p>点击「开始识别」，两个引擎会分别给出结果 <span class="kao">(´･ω･`)</span></p>
+            </div>
+            <img id="cascadeResultImg" class="preview-img" alt="级联识别结果" hidden>
+            <canvas id="cascadeOverlay"></canvas>
+          </div>
+          <div class="cascade-action">
+            <button type="button" class="btn-primary" id="cascadeDetectBtn">开始识别</button>
+          </div>
+          <div class="cascade-engine-info" id="cascadeEngineInfo">MediaPipe 未加载</div>
+          <div id="cascadeInfoContent" class="info-content"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ============================================================
        以下区块两种模式共用，不随页面切换而隐藏：
        识别信息、累计统计、表情趋势（数据跨模式累加，切模式不清空）
+       图片模式下由 main.js 把整个容器移进 #infoRightCol（右列），
+       其它模式移回这个固定的 home 位置（pageCascade 之后）。
        ============================================================ -->
+  <div id="sharedInfoHome"></div>
+  <div id="sharedInfo">
 
   <!-- ============ 识别信息 ============ -->
-  <section class="info-box">
-    <div class="info-title" id="infoTitle">表情识别信息
+  <section class="info-box" id="infoBox">
+    <div class="info-title" id="infoTitle"><span id="infoTitleText">表情识别信息</span>
       <button type="button" class="info-exp-link" id="infoExpBtn" title="对同一张图用三档阈值各跑一遍">阈值对比实验 →</button>
     </div>
     <div id="infoContent" class="info-content">
@@ -387,6 +466,7 @@
       </div>
     </div>
   </section>
+  </div><!-- /#sharedInfo -->
 
   <!-- ============ 人脸脱敏开关（两种模式共用） ============ -->
   <div class="mask-opt">
@@ -514,6 +594,7 @@
         <span>用户名</span>
         <input id="regUser" type="text" autocomplete="username" placeholder="起一个名字，不是邮箱" required>
         <small>3~20 位，中英文、数字、下划线。<b>这里填的是用户名，不是邮箱</b>；登录时可输用户名或邮箱。</small>
+      </label>
       <label class="auth-field">
         <span>邮箱</span>
         <input id="regEmail" type="email" autocomplete="email" required>
@@ -559,10 +640,8 @@
     <div class="drawer-body">
       <p id="settingsToast" class="drawer-toast" hidden></p>
 
-      <!-- 主题色：V1.9.EXP 先统一蓝紫玻璃，主题切换暂不开放（保留逻辑，方便以后恢复）
-           恢复方法：去掉 <section> 上的 hidden，并把 anim.css 里那几条
-           "html[data-theme...]" 统一规则改为只作用于 :root 即可 -->
-      <section class="set-group" hidden>
+      <!-- 主题色：V1.9 Next 沿用 1.9.5 的 UI，恢复主题切换（默认橙 / 向日葵黄 / 海洋蓝 / 樱花粉） -->
+      <section class="set-group">
         <h3>主题色</h3>
         <p class="set-desc">只换颜色，不改布局。</p>
         <div class="theme-row">
@@ -660,34 +739,36 @@
   </footer>
 
   <!-- face-api.js 主库（已内置 TensorFlow.js，无需联网） -->
-  <script src="lib/face-api.js?v=1.9.5e17"></script>
+  <script src="lib/face-api.js?v=1.9next-10"></script>
 
   <!-- 业务代码按职责拆成 10 个文件。
        顺序有讲究：config 提供全局配置与状态，其余文件都要用它；
        main.js 必须最后 —— 它会在加载时"立即"绑定事件，
        所以要保证前面所有文件里的函数都已经定义好了。
        详见 代码导读.md -->
-  <script src="js/config.js?v=1.9.5e17"></script>
-<script src="js/smoothing.js?v=1.9.5e17"></script>
-<script src="js/appear-motion.js?v=1.9.5e17"></script>
-<script src="js/ripple.js?v=1.9.5e17"></script>
-<script src="js/changelog.js?v=1.9.5e17-p2"></script>
-<script src="js/model-registry.js?v=1.9.5e17"></script>
-<script src="js/expression-engine.js?v=1.9.5e17"></script>
-<script src="js/auth.js?v=1.9.5e17"></script>
-<script src="js/settings.js?v=1.9.5e17"></script>
-<script src="js/diagnostics.js?v=1.9.5e17"></script>
-  <script src="js/models.js?v=1.9.5e17"></script>
-  <script src="js/render.js?v=1.9.5e17"></script>
-  <script src="js/report.js?v=1.9.5e17"></script>
-  <script src="js/image-select.js?v=1.9.5e17"></script>
-  <script src="js/recognize.js?v=1.9.5e17"></script>
-  <script src="js/camera.js?v=1.9.5e17"></script>
-  <script src="js/video.js?v=1.9.5e17"></script>
-  <script src="js/stats-trend.js?v=1.9.5e17"></script>
-  <script src="js/grouping.js?v=1.9.5e17"></script>
-  <script src="js/pwa.js?v=1.9.5e17"></script>
-  <script src="js/main.js?v=1.9.5e17"></script>
+  <script src="js/config.js?v=1.9next-10"></script>
+<script src="js/smoothing.js?v=1.9next-10"></script>
+<script src="js/appear-motion.js?v=1.9next-10"></script>
+<script src="js/ripple.js?v=1.9next-10"></script>
+<script src="js/changelog.js?v=1.9next-10"></script>
+<script src="js/model-registry.js?v=1.9next-10"></script>
+<script src="js/expression-engine.js?v=1.9next-10"></script>
+<script src="js/cascade-engine.js?v=1.9next-10"></script>
+<script src="js/cascade-view.js?v=1.9next-10"></script>
+<script src="js/auth.js?v=1.9next-10"></script>
+<script src="js/settings.js?v=1.9next-10"></script>
+<script src="js/diagnostics.js?v=1.9next-10"></script>
+  <script src="js/models.js?v=1.9next-10"></script>
+  <script src="js/render.js?v=1.9next-10"></script>
+  <script src="js/report.js?v=1.9next-10"></script>
+  <script src="js/image-select.js?v=1.9next-10"></script>
+  <script src="js/recognize.js?v=1.9next-10"></script>
+  <script src="js/camera.js?v=1.9next-10"></script>
+  <script src="js/video.js?v=1.9next-10"></script>
+  <script src="js/stats-trend.js?v=1.9next-10"></script>
+  <script src="js/grouping.js?v=1.9next-10"></script>
+  <script src="js/pwa.js?v=1.9next-10"></script>
+  <script src="js/main.js?v=1.9next-10"></script>
 
 <!-- ============ iOS 安装引导（Safari 没有安装 API，只能图文引导）============ -->
 <div id="iosGuideMask" class="drawer-mask" hidden></div>

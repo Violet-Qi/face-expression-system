@@ -1,9 +1,10 @@
 # 千颜万花 · Web 人脸表情识别系统
 
 > 一个**纯前端**的浏览器人脸表情识别系统。
-> 图片、摄像头、视频文件三种输入，识别 7 类表情，**全部在本机完成——照片不出本机**。
+> 图片、摄像头、视频文件三种输入，识别 7 类表情，**全部在本机完成——照片不出本机**；
+> 另有实验窗口「异构双引擎级联」——同一张脸，一套说是什么表情，另一套说有多用力。
 
-![版本](https://img.shields.io/badge/version-1.9.5-blue)
+![版本](https://img.shields.io/badge/version-1.9%20Next-blue)
 ![隐私](https://img.shields.io/badge/隐私-照片不出本机-success)
 ![PWA](https://img.shields.io/badge/PWA-可安装_·_断网可用-purple)
 
@@ -26,7 +27,7 @@
 
 ## 版本历史
 
-共 23 个版本（`v1.0` → `v1.9.5`），每个版本都有独立 tag。
+共 24 个版本（`v1.0` → `v1.9 Next`），每个版本都有独立 tag。
 
 ```bash
 git tag                    # 查看所有版本
@@ -48,6 +49,7 @@ git log --oneline --all    # 看完整演进
 | `v1.9.0` ~ `v1.9.2` | 11-11~13 | 多帧平滑、页头档位下拉、增强表情模型（FERPlus）、手机端支持、点击水波反馈、邮箱登录 |
 | `v1.9.3` ~ `v1.9.4` | 11-13 | 更新公告入口（封面右下角）、修按钮尺寸跳变 / 整页平移 / 橙色按钮无反馈 |
 | `v1.9.5` | 11-18 | **PWA 化**：可安装到桌面、断网可用、三级缓存策略 |
+| `v1.9 Next` | 11-23 | **三层切**：功能套用实验版、UI 沿用 1.9.5。新增「异构双引擎级联」、图片页浮层、手机端模式条适配、上传区高度动画 |
 
 > **注**：`v1.7.3` 没有单独的源码包（当时未单独打包），因此仓库中没有该 tag。
 > 其内容（四套主题色）已被 `v1.8.0` 包含。
@@ -67,7 +69,9 @@ cd face-expression-system
 
 ### 2. 补上模型文件 ⚠️
 
-**模型文件（30 MB）没有纳入版本控制**（避免仓库过重）。请按下表下载，放到 `models/` 目录：
+**模型文件没有整体纳入版本控制**（避免仓库过重）。其中基础检测 / 表情模型请按下表下载到 `models/` 目录：
+
+> **v1.9 Next 起**，`lib/mediapipe/`（约 15 MB）与 `models/face_landmarker.task`（约 3.8 MB）**已随仓库提供**，克隆后"异构双引擎级联"即可开箱使用。
 
 | 文件 | 大小 | 来源 |
 |---|---|---|
@@ -102,8 +106,9 @@ node server-app.js 8080     # 指定端口
 ## 技术栈
 
 ```
-前端      原生 JavaScript（20 个模块，无打包工具，全局作用域协作）
+前端      原生 JavaScript（23 个模块，无打包工具，全局作用域协作）
 推理      face-api.js 1.7.15（内置 TensorFlow.js），WebGL 优先 / CPU 兜底
+          媒体管道  MediaPipe Tasks（人脸关键点 52 维 blendshape，估算表情强度）
 后端      server-app.js —— 零第三方依赖，只用 Node 内置模块
           node:http / node:sqlite / node:crypto / node:fs
 数据库    SQLite（sessions / expr_items / users / device_settings / guest_trials）
@@ -140,10 +145,14 @@ PWA       manifest.json + sw.js（三级缓存：核心预缓存 / 按需 / 不�
 ├── manifest.json           PWA 清单
 ├── sw.js                   Service Worker
 ├── css/
-│   ├── style.css           主样式（含主题系统与动效）
+│   ├── style.css           主样式（含主题系统与动效）· 与 1.9.5 逐字节一致
+│   ├── features.css         新功能样式（级联 / 图片页浮层 / .next-badge）
 │   └── admin.css           管理台样式
 ├── js/                     20 个模块
 │   ├── main.js             事件绑定 / 模式切换 / 视图渲染唯一入口
+│   ├── cascade-engine.js    异构双引擎级联（MediaPipe 强度判定）
+│   ├── cascade-view.js      级联页视图与结果渲染
+│   ├── appear-motion.js     弹层 WAAPI 动效（弹簧曲线 / 幂等收尾）
 │   ├── config.js           常量与全局状态
 │   ├── models.js           后端选择与模型加载
 │   ├── recognize.js        检测流水线 / 批量 / 分组

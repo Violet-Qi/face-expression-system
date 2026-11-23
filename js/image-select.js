@@ -69,6 +69,11 @@ function showImageAt(idx) {
   const item = images[currentIdx];
   currentFile = item.file;
 
+  // 高度过渡：记录当前高度（选图后 .drop-zone 会被图片撑高），先锁住避免闪
+  const pageEl = document.getElementById('pageImage');
+  const fromHeight = pageEl ? pageEl.offsetHeight : 0;
+  if (typeof pinPageHeight === 'function') pinPageHeight(pageEl, fromHeight);
+
   sourceImg.src = item.url;
   const many = images.length > 1;
   imgIndex.textContent = many ? `第 ${currentIdx + 1} / ${images.length} 张` : '';
@@ -85,6 +90,11 @@ function showImageAt(idx) {
   renderBatch();
   updateButtonState();
   renderView();        // 显隐统一交给 renderView（原来这里有 9 处 .hidden）
+
+  // 等图片解码后，把 #pageImage 从旧高度平滑过渡到新高度（选图拉长动画）
+  if (typeof animateImagePageHeight === 'function' && pageEl && fromHeight) {
+    animateImagePageHeight(pageEl, fromHeight, 'sourceImg');
+  }
 }
 
 /** 前后切换（到头的另一头回绕，省得用户点着点着发现按钮点了没反应） */
@@ -99,6 +109,11 @@ function gotoNextImage() {
 
 /** 清空已选图片，回到初始的拖拽/选择界面 */
 function clearImages() {
+  // 高度过渡：记录当前高度（清空后 .drop-zone 会缩回 min-height），先锁住避免闪
+  const pageEl = document.getElementById('pageImage');
+  const fromHeight = pageEl ? pageEl.offsetHeight : 0;
+  if (typeof pinPageHeight === 'function') pinPageHeight(pageEl, fromHeight);
+
   images.forEach(it => { if (it && it.url && it.url.startsWith('blob:')) URL.revokeObjectURL(it.url); });
   images = [];
   currentIdx = 0;
@@ -126,5 +141,10 @@ function clearImages() {
   renderBatch();
   updateButtonState();
   renderView();        // 显隐统一交给 renderView（原来这里有 7 处 .hidden）
+
+  // 把 #pageImage 从高度平滑过渡缩回（清空缩回动画）
+  if (typeof animateImagePageHeight === 'function' && pageEl && fromHeight) {
+    animateImagePageHeight(pageEl, fromHeight, 'sourceImg', 60);
+  }
 }
 

@@ -40,7 +40,7 @@ const DATA_DIR  = path.join(ROOT, 'data');
 const DB_FILE   = path.join(DATA_DIR, 'app.db');
 const AUTH_FILE = path.join(DATA_DIR, 'admin.json');
 const SECRET_FILE = path.join(DATA_DIR, 'secret.json');
-const VERSION = '1.9.5';
+const VERSION = '1.9 Next';
 
 const DEFAULT_ADMIN_USER = 'admin';
 const DEFAULT_ADMIN_PASS = 'admin123';   // 首次启动写入；请在管理台里改掉
@@ -982,7 +982,9 @@ const MIME = {
   '.bin':  'application/octet-stream',
   '.png':  'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
   '.gif':  'image/gif', '.webp': 'image/webp', '.svg': 'image/svg+xml',
-  '.ico':  'image/x-icon', '.txt': 'text/plain; charset=utf-8', '.md': 'text/plain; charset=utf-8'
+  '.ico':  'image/x-icon', '.txt': 'text/plain; charset=utf-8', '.md': 'text/plain; charset=utf-8',
+  '.wasm': 'application/wasm',
+  '.task': 'application/octet-stream'
 };
 
 /* data 目录绝不对外提供（里面有数据库和管理员口令哈希）。

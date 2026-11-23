@@ -208,12 +208,14 @@ const $ = id => document.getElementById(id);
 const pageImage          = $('pageImage');
 const pageCamera         = $('pageCamera');
 const pageVideo          = $('pageVideo');
+const pageCascade        = $('pageCascade');
 
 const modelStatus       = $('modelStatus');
 const modelStatusText   = $('modelStatusText');
 const tabImage          = $('tabImage');
 const tabCamera         = $('tabCamera');
 const tabVideo          = $('tabVideo');
+const tabCascade        = $('tabCascade');
 
 /* ---- 视频文件页 ---- */
 const videoFile         = $('videoFile');
@@ -235,6 +237,8 @@ const video             = $('video');
 const resultImg         = $('resultImg');
 const overlay           = $('overlay');
 const resultPlaceholder = $('resultPlaceholder');
+const resultOverlay     = $('resultOverlay');
+const backToUploadBtn   = $('backToUploadBtn');
 const cameraOverlay     = $('cameraOverlay');
 const cameraPlaceholder = $('cameraPlaceholder');
 const infoTitle         = $('infoTitle');

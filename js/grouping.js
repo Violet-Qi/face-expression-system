@@ -79,7 +79,7 @@ function renderGroupCards(results, groups) {
 
     const card = document.createElement('div');
     card.className = 'person-card';
-    card.style.setProperty('--group-color', color);
+    card.style.borderColor = color;
 
     const thumbs = document.createElement('div');
     thumbs.className = 'person-thumbs';
@@ -101,7 +101,7 @@ function renderGroupCards(results, groups) {
 
     const nameEl = document.createElement('span');
     nameEl.className = 'person-name';
-    nameEl.style.setProperty('--group-color', color);
+    nameEl.style.background = color;
     nameEl.textContent = `人物${g + 1}`;
 
     const countEl = document.createElement('span');
@@ -239,7 +239,7 @@ function renderGallery() {
 
     const card = document.createElement('div');
     card.className = 'person-card';
-    card.style.setProperty('--group-color', color);
+    card.style.borderColor = color;
 
     const thumbs = document.createElement('div');
     thumbs.className = 'person-thumbs';
@@ -264,7 +264,7 @@ function renderGallery() {
     info.className = 'person-info';
     const nameEl = document.createElement('span');
     nameEl.className = 'person-name';
-    nameEl.style.setProperty('--group-color', color);
+    nameEl.style.background = color;
     nameEl.textContent = `人物${g.label + 1}`;
 
     const listEl = document.createElement('span');
@@ -287,12 +287,12 @@ function renderGallery() {
   galleryData.noFace.forEach(ph => {
     const card = document.createElement('div');
     card.className = 'person-card';
-    card.style.setProperty('--group-color', 'rgba(148, 163, 184, .5)');
+    card.style.borderColor = '#d3d9e0';
     const info = document.createElement('div');
     info.className = 'person-info';
     const nameEl = document.createElement('span');
     nameEl.className = 'person-name';
-    nameEl.style.setProperty('--group-color', 'rgba(148, 163, 184, .6)');
+    nameEl.style.background = '#b9c2cc';
     nameEl.textContent = `第 ${ph.idx + 1} 张`;
     const metaEl = document.createElement('span');
     metaEl.className = 'person-meta';

@@ -1,0 +1,512 @@
+/* ============================================================
+   千颜万花 · V1.9.EXP 新功能样式（features.css）
+   ------------------------------------------------------------
+   三层切（V1.9 Next = exp 功能 + 1.9.5 UI/动画设计）：
+     ① style.css  = 1.9.5 原版（逐字，UI/动效全回 1.9.5）
+     ② features.css = 本文件，只有「新功能必需」的样式
+     ③ anim.css   = 已废弃（那 115 条改 1.9.5 外观的视觉覆盖整体退场）
+
+   原则：
+   · 这里只放新功能（异构双引擎级联页 / 图片页浮层+双栏）需要的样式。
+   · 本文件引入的、1.9.5 style.css 里没有的 CSS 变量，在下方 :root 里补齐，
+     不留悬空引用。
+   · 绝不覆盖 1.9.5 已有的设计 token（--text / --card / --primary / --bg /
+     --border / --dur-fast / --ease-in / --ease-out 等都在 1.9.5 里，用它们的值，
+     不在这里重定义）。
+
+   加载顺序：features.css 必须排在 style.css **之后**（engineer 在 index.html
+   里保证）。因为下面的 .result-overlay / .cascade-* 要覆盖 1.9.5 .panel 的
+   background/border-radius/box-shadow，同优先级时后出现者胜。
+   ============================================================ */
+
+/* 实验版专用 token —— 1.9.5 没有，这里补齐（只影响本文件规则） */
+:root {
+  --accent: #6b7cff;                           /* 主紫蓝 */
+  --accent-2: #8b5cf6;                         /* 紫 */
+  --accent-3: #38bdf8;                         /* 青蓝 */
+  --glass-bg: rgba(255, 255, 255, .62);
+  --glass-bg-strong: rgba(255, 255, 255, .78);
+  --glass-border: rgba(255, 255, 255, .45);
+  --glass-shadow: 0 8px 32px rgba(31, 38, 135, .18);
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-pill: 999px;
+  --shadow-sm: 0 2px 8px rgba(31, 38, 135, .08);
+  --shadow-md: 0 6px 20px rgba(31, 38, 135, .12);
+  --shadow-lg: 0 14px 44px rgba(31, 38, 135, .18);
+  --dur-micro: 90ms;                           /* 按压反馈 / 圆点闪烁 */
+  --dur-base: 320ms;                           /* 标准过渡 / 卡片 */
+  --dur-slow: 520ms;                           /* 弹窗 / 抽屉 / 大元素 */
+  --dur-hero: 900ms;                           /* 封面 / 大标题 */
+  --dur-motion: 620ms;                         /* 空间位移轨迹 */
+  /* 弹簧缓动（CSS linear()，为 2.0 预留；appear-motion.js L41 会读 --ease-spring） */
+  --ease-spring: linear(0, 0.0166 1.6%, 0.0609 3.2%, 0.1252 4.8%, 0.2029 6.3%, 0.2886 7.9%, 0.3777 9.5%, 0.4666 11.1%, 0.5525 12.7%, 0.6333 14.3%, 0.7076 15.9%, 0.7745 17.5%, 0.8336 19%, 0.8846 20.6%, 0.9279 22.2%, 0.9637 23.8%, 0.9926 25.4%, 1.0152 27%, 1.0322 28.6%, 1.0444 30.2%, 1.0524 31.7%, 1.0569 33.3%, 1.0586 34.9%, 1.0581 36.5%, 1.0558 38.1%, 1.0522 39.7%, 1.0478 41.3%, 1.0429 42.9%, 1.0377 44.4%, 1.0324 46%, 1.0273 47.6%, 1.0225 49.2%, 1.0181 50.8%, 1.014 52.4%, 1.0105 54%, 1.0074 55.6%, 1.0047 57.1%, 1.0026 58.7%, 1.0008 60.3%, 0.9994 61.9%, 0.9983 63.5%, 0.9975 65.1%, 0.997 66.7%, 0.9967 68.3%, 0.9966 69.8%, 0.9966 71.4%, 0.9967 73%, 0.9969 74.6%, 0.9971 76.2%, 0.9974 77.8%, 0.9977 79.4%, 0.998 81%, 0.9983 82.5%, 0.9986 84.1%, 0.9989 85.7%, 0.9991 87.3%, 0.9993 88.9%, 0.9995 90.5%, 0.9997 92.1%, 0.9998 93.7%, 0.9999 95.2%, 1 96.8%, 1.0001 98.4%, 1);
+  --ease-spring-sm: linear(0, 0.0165 1.6%, 0.0598 3.2%, 0.122 4.8%, 0.1963 6.3%, 0.2774 7.9%, 0.3611 9.5%, 0.4441 11.1%, 0.524 12.7%, 0.599 14.3%, 0.668 15.9%, 0.7303 17.5%, 0.7855 19%, 0.8338 20.6%, 0.8754 22.2%, 0.9105 23.8%, 0.9397 25.4%, 0.9635 27%, 0.9826 28.6%, 0.9975 30.2%, 1.0087 31.7%, 1.0169 33.3%, 1.0226 34.9%, 1.0261 36.5%, 1.0279 38.1%, 1.0284 39.7%, 1.0278 41.3%, 1.0266 42.9%, 1.0248 44.4%, 1.0227 46%, 1.0204 47.6%, 1.018 49.2%, 1.0156 50.8%, 1.0134 52.4%, 1.0112 54%, 1.0093 55.6%, 1.0075 57.1%, 1.006 58.7%, 1.0046 60.3%, 1.0035 61.9%, 1.0025 63.5%, 1.0017 65.1%, 1.001 66.7%, 1.0005 68.3%, 1 69.8%, 0.9997 71.4%, 0.9995 73%, 0.9994 74.6%, 0.9993 76.2%, 0.9992 77.8%, 0.9992 79.4%, 0.9992 81%, 0.9992 82.5%, 0.9993 84.1%, 0.9994 85.7%, 0.9994 87.3%, 0.9995 88.9%, 0.9996 90.5%, 0.9996 92.1%, 0.9997 93.7%, 0.9997 95.2%, 0.9998 96.8%, 0.9998 98.4%, 1);
+  --ease-spring-lg: linear(0, 0.0167 1.6%, 0.0615 3.2%, 0.1269 4.8%, 0.2064 6.3%, 0.2945 7.9%, 0.3865 9.5%, 0.4785 11.1%, 0.5677 12.7%, 0.6518 14.3%, 0.7291 15.9%, 0.7987 17.5%, 0.8599 19%, 0.9125 20.6%, 0.9567 22.2%, 0.9929 23.8%, 1.0216 25.4%, 1.0434 27%, 1.0592 28.6%, 1.0698 30.2%, 1.0758 31.7%, 1.0781 33.3%, 1.0774 34.9%, 1.0744 36.5%, 1.0696 38.1%, 1.0636 39.7%, 1.0568 41.3%, 1.0497 42.9%, 1.0425 44.4%, 1.0354 46%, 1.0287 47.6%, 1.0226 49.2%, 1.017 50.8%, 1.012 52.4%, 1.0078 54%, 1.0042 55.6%, 1.0012 57.1%, 0.9988 58.7%, 0.997 60.3%, 0.9956 61.9%, 0.9947 63.5%, 0.9942 65.1%, 0.9939 66.7%, 0.9939 68.3%, 0.9941 69.8%, 0.9945 71.4%, 0.9949 73%, 0.9954 74.6%, 0.996 76.2%, 0.9965 77.8%, 0.9971 79.4%, 0.9976 81%, 0.9981 82.5%, 0.9986 84.1%, 0.999 85.7%, 0.9993 87.3%, 0.9996 88.9%, 0.9999 90.5%, 1.0001 92.1%, 1.0002 93.7%, 1.0003 95.2%, 1.0004 96.8%, 1.0004 98.4%, 1);
+  --ease-spring-x: linear(0, 0.0166 1.6%, 0.0605 3.2%, 0.124 4.8%, 0.2004 6.3%, 0.2843 7.9%, 0.3713 9.5%, 0.4579 11.1%, 0.5415 12.7%, 0.62 14.3%, 0.6922 15.9%, 0.7573 17.5%, 0.8149 19%, 0.8649 20.6%, 0.9074 22.2%, 0.943 23.8%, 0.972 25.4%, 0.9951 27%, 1.013 28.6%, 1.0262 30.2%, 1.0356 31.7%, 1.0416 33.3%, 1.0449 34.9%, 1.046 36.5%, 1.0454 38.1%, 1.0434 39.7%, 1.0406 41.3%, 1.0371 42.9%, 1.0333 44.4%, 1.0293 46%, 1.0253 47.6%, 1.0214 49.2%, 1.0178 50.8%, 1.0145 52.4%, 1.0114 54%, 1.0087 55.6%, 1.0064 57.1%, 1.0044 58.7%, 1.0028 60.3%, 1.0014 61.9%, 1.0003 63.5%, 0.9995 65.1%, 0.9988 66.7%, 0.9984 68.3%, 0.9981 69.8%, 0.9979 71.4%, 0.9979 73%, 0.9979 74.6%, 0.998 76.2%, 0.9981 77.8%, 0.9983 79.4%, 0.9985 81%, 0.9986 82.5%, 0.9988 84.1%, 0.999 85.7%, 0.9992 87.3%, 0.9993 88.9%, 0.9995 90.5%, 0.9996 92.1%, 0.9997 93.7%, 0.9998 95.2%, 0.9999 96.8%, 0.9999 98.4%, 1);
+  --ease-decel: cubic-bezier(.1, .9, .2, 1);
+  --ease-in-out: cubic-bezier(.4, 0, .2, 1);
+  --shift-xs: 8px;
+  --shift-sm: 16px;
+  --shift-md: 28px;
+  --shift-lg: 48px;
+  --shift-xl: 72px;
+  --z-base: 1;                                 /* 普通内容 */
+  --z-card: 10;                                /* 卡片浮起 */
+  --z-sticky: 100;                             /* 页头/吸顶 */
+  --z-mask: 940;                               /* 遮罩 */
+  --z-drawer: 950;                             /* 抽屉 / 登录 */
+  --z-modal: 960;                              /* 档位弹层 */
+  --z-sheet: 970;                              /* 公告 / 大弹层 */
+  --z-toast: 980;                              /* 提示浮层 */
+  --z-overlay: 990;                            /* 必须盖住一切 */
+}
+
+/* ============================================================
+   异构双引擎级联页（cascade-*）
+   ------------------------------------------------------------
+   只做视觉/动效，不碰功能。沿用上方蓝紫玻璃 token。
+   ============================================================ */
+
+/* ---- 实验功能徽章（结果面板标题旁，紫色半透明小标签） ---- */
+#workspaceCascade .panel-title {
+  position: relative;
+  padding-right: 128px; /* 给右上角徽章让位，避免标题被压 */
+}
+.cascade-beta-tag {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 2;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  line-height: 1.4;
+  color: var(--accent-2);
+  background: rgba(139, 92, 246, .14);
+  background-image: linear-gradient(135deg, rgba(139,92,246,.20), rgba(107,124,255,.10));
+  border: 1px solid rgba(139, 92, 246, .28);
+  border-radius: var(--radius-pill);
+  backdrop-filter: blur(8px) saturate(140%);
+  -webkit-backdrop-filter: blur(8px) saturate(140%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 2px 8px rgba(139,92,246,.18);
+  white-space: nowrap;
+}
+
+/* ---- 左栏引擎说明卡（说明 face-api 判定 + MediaPipe 强度） ---- */
+.cascade-note {
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: var(--glass-bg);
+  background-image: linear-gradient(to bottom, rgba(255,255,255,.38), rgba(255,255,255,0) 26%);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,.5);
+}
+.cascade-note p {
+  margin: 0 0 6px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.cascade-note p:last-child { margin-bottom: 0; }
+.cascade-note b { color: var(--accent); font-weight: 600; }
+.cascade-note-hint {
+  margin-top: 2px !important;
+  font-size: 12px !important;
+  color: var(--text-muted) !important;
+}
+
+/* ---- 开始识别主按钮（用 .btn-primary 强渐变，此处只做容器排版） ---- */
+.cascade-action {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+.cascade-action .btn-primary {
+  min-width: 180px;
+  padding: 11px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: .04em;
+}
+
+/* ---- MediaPipe 引擎状态小字（灰字，就绪时蓝字） ---- */
+.cascade-engine-info {
+  margin-top: 12px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  transition: color var(--dur-fast) var(--ease-decel);
+}
+/* 就绪态：JS（cascade-view.js _cascadeUpdateEngineInfo）会给该元素加 .is-ready，
+   这里变蓝并加一点强调。未加则保持灰字默认。 */
+.cascade-engine-info.is-ready {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* ---- 结果列表每行下方的小字强度描述（cascade-extra） ----
+   JS 生成的 .face-row.cascade-face-row 内：.face-label 为第一行，
+   .cascade-extra 为第二行小字。默认 .face-row 是横向 flex，
+   这里让 .cascade-extra 单独成行（flex-basis:100%），并比 label 小一号。 */
+.cascade-face-row {
+  flex-wrap: wrap;
+  row-gap: 2px;
+  border-top: 1px solid rgba(255,255,255,.5); /* 玻璃感分隔线，替代默认 #f0f2f5 */
+}
+.cascade-face-row:first-of-type { border-top: none; }
+.cascade-face-row .face-label {
+  font-size: 14px;
+  color: var(--text);
+}
+.cascade-face-row .cascade-extra {
+  flex-basis: 100%;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* ---- 级联页空态图标（cascadePlaceholder）----
+   给 #cascadePlaceholder 加一个居中的示意图标，让「空态」一眼可辨。
+   用 ::before 纯 CSS 实现；只作用级联占位，不影响识别后显示。 */
+#cascadePlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 32px 24px;
+}
+#cascadePlaceholder::before {
+  content: '🖼';
+  font-size: 44px;
+  line-height: 1;
+  opacity: .55;
+  /* 轻微呼吸，提示这是「等待中的空态」，不是裂图 */
+  animation: fxPlaceholderPulse 2.6s var(--ease-in-out) infinite;
+}
+#cascadePlaceholder p {
+  margin: 0;
+}
+/* 呼吸：不透明度缓慢起伏，克制、不刺眼 */
+@keyframes fxPlaceholderPulse {
+  0%, 100% { opacity: .45; transform: scale(1); }
+  50%      { opacity: .70; transform: scale(1.04); }
+}
+/* 用户开启「减少动态效果」时，去掉呼吸动画，避免无意义的动 */
+@media (prefers-reduced-motion: reduce) {
+  #cascadePlaceholder::before { animation: none; }
+}
+
+/* ============================================================
+   图片识别页：左右两列布局（engineer 用容器 class 区分）
+   ------------------------------------------------------------
+   左列：.workspace-image-merge（上传 + 结果竖排）
+   右列：.info-right-col / #infoRightCol（识别信息 / 累计统计 / 表情趋势 拉上来）
+   用 :has() 自动匹配：只要 #workspaceImage 内出现这两个容器，就切成左右两列。
+   ⚠️ 不加 .page 固定高度，不干扰 animatePageHeight。
+   ============================================================ */
+
+/* 左列容器：上传 + 结果 竖排。也是识别结果浮层的定位父。
+   grid-template-rows:1fr 让 #leftPanel 撑满容器剩余高度，识别态底对齐。 */
+.workspace-image-merge {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;      /* 单行撑满容器高度，识别态左列与右列底对齐 */
+  gap: 16px;
+  align-content: start;
+  min-width: 0;
+}
+
+/* 右列容器：识别信息 / 统计 / 趋势 竖排，左对齐。
+   flex column：无数据时 .info-box 撑满右列与左边等高，
+   有统计/趋势时按内容高度排在下面。兼容 class .info-right-col 与 id #infoRightCol。 */
+.info-right-col,
+#infoRightCol {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-content: start;
+  min-width: 0;
+}
+
+/* 右列里被 main.js 塞进来的 #sharedInfo（内含 .info-box/.stats-box/.trend-box） */
+.info-right-col > #sharedInfo,
+#infoRightCol > #sharedInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* 无数据时「表情识别信息」撑满右列剩余高度，与左边上传窗口齐平 */
+.info-right-col .info-box,
+#infoRightCol .info-box {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+/* 统计 / 趋势按内容高度自然排布，不强制拉伸 */
+.info-right-col .stats-box,
+.info-right-col .trend-box,
+#infoRightCol .stats-box,
+#infoRightCol .trend-box {
+  flex: 0 0 auto;
+}
+
+/* 当 #workspaceImage 同时含两个容器时，变成左右两列（仅图片页生效） */
+#workspaceImage:has(.workspace-image-merge):has(.info-right-col),
+#workspaceImage:has(.workspace-image-merge):has(#infoRightCol) {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+}
+/* 窄屏回退：两列挤不下，变回单列，信息区回到下方 */
+@media (max-width: 760px) {
+  #workspaceImage:has(.workspace-image-merge):has(.info-right-col),
+  #workspaceImage:has(.workspace-image-merge):has(#infoRightCol) {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* info/stats/trend 三个区块在右列里保留原有间距（它们本有 margin-bottom） */
+.info-right-col .info-box,
+.info-right-col .stats-box,
+.info-right-col .trend-box,
+#infoRightCol .info-box,
+#infoRightCol .stats-box,
+#infoRightCol .trend-box {
+  margin-bottom: 0;
+}
+
+/* ============================================================
+   图片识别页：识别结果浮层（result-overlay）
+   ------------------------------------------------------------
+   engineer 的 DOM 约定：
+     #resultOverlay 是 <section class="panel result-overlay" hidden>，
+     放在 .workspace-image-merge 内、#leftPanel 之后。
+     hidden 时全局 [hidden]{display:none!important} 生效；
+     显示时用 .result-overlay:not([hidden]) 承载 display:flex。
+   ============================================================ */
+
+/* 浮层：绝对定位盖住整个左列容器，玻璃卡片背景 */
+.result-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  margin: 0;
+  /* 关键：base .panel 在 1.9.5 style.css 里 display:flex + overflow:hidden + box-shadow，
+     这里显式覆盖成我们需要的 flex 纵向布局 + 重设玻璃面，保证覆盖生效 */
+  background: var(--glass-bg);
+  background-image: linear-gradient(to bottom, rgba(255,255,255,.42), rgba(255,255,255,0) 26%);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,.5);
+  /* 浮层是覆盖在左列上的完整一屏，悬停不该整块上浮（会露出下面的上传区边缘） */
+}
+.result-overlay:hover {
+  transform: none;
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,.5);
+}
+
+/* 显示态：只在没 hidden 时承载 flex，否则 hidden 属性会被全局 [hidden] 的
+   display:none!important 强制盖掉，导致浮层关不掉。
+   浮层必须走自己的 fxOverlayIn（原地淡入+上移），不能跟着通用 .panel 从屏幕
+   侧面飞入。所以本文件在末尾把 1.9.5 的通用选择器补成
+   `.panel:not(#leftPanel):not(.result-overlay)`（fx-anim/fx-switch/入场/切换/
+   reduced-motion 等共 5 处），把浮层从飞入动画里排除，落到这里的 fxOverlayIn。 */
+.result-overlay:not([hidden]) {
+  display: flex;
+  flex-direction: column;
+  animation: fxOverlayIn var(--dur-base) var(--ease-spring-sm) both;
+}
+
+/* ★ 关键：让浮层在入场动画上胜出。
+   1.9.5 style.css 的通用规则 `body.fx-anim/fx-switch .page:not([hidden]) .panel:not(#leftPanel)`
+   （特异性 1,4,1）会匹配到浮层本体（它是个 .panel），把浮层带进 fxInRight/fxFlyRight
+   的「从屏幕侧面飞入」。而 `.result-overlay:not([hidden])` 只有 (0,2,0)，盖不过它。
+   上面那 5 条 `.panel:not(#leftPanel):not(.result-overlay)` 只对「非浮层面板」重新断言
+   原值（不匹配浮层），并不能阻止 1.9.5 匹配浮层。
+   → 这里用和 1.9.5 同体量、且 `!important` 的专门选择器强制浮层走 fxOverlayIn。 */
+body.fx-anim .page:not([hidden]) .result-overlay:not([hidden]),
+body.fx-switch .page:not([hidden]) .result-overlay:not([hidden]) {
+  animation: fxOverlayIn var(--dur-base) var(--ease-spring-sm) both !important;
+}
+
+/* 浮层出现：淡入 + 轻微上移 + 缩放归位 */
+@keyframes fxOverlayIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 浮层主体：撑满剩余高度，内容超高时内部滚动 */
+.result-overlay .panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* 结果图/canvas 自适应，不撑破浮层 */
+.result-overlay .canvas-wrap {
+  max-height: 100%;
+}
+
+/* 「← 返回上传图片」按钮：移到标题行最左（在 🔍 图标之前）。
+   .panel-title 是 flex 容器，用 order:-1 提到首位，margin-right 与后跟图标留间距。 */
+.result-back-btn {
+  order: -1;
+  margin-left: 0;
+  margin-right: 10px;
+}
+
+/* 窄屏（单列）：浮层照样盖住上传区 */
+@media (max-width: 760px) {
+  .result-overlay {
+    inset: 0;
+    border-radius: var(--radius-lg);
+  }
+}
+
+/* ============================================================
+   WAAPI 弹层「落位后不再抖回」
+   ------------------------------------------------------------
+   exp 的 js/appear-motion.js 会给 WAAPI 打开的弹层加 waapi-done，
+   而 1.9.5 style.css 里 `.xxx.is-open { animation: fxPopUp ... }` 还在；
+   不留这条会变成「落位后抖回」的二次运动。
+   此规则必须排在 1.9.5 style.css 之后才生效（features.css 本身就在它之后加载）。
+   只关整个弹窗的 animation，不影响 .is-open 内部子元素的级联入场。
+   CSS fallback 打开的（游客门禁/抽屉老逻辑）不加 waapi-done，仍靠 .is-open 入场。
+   ============================================================ */
+.auth-panel.waapi-done,
+.changelog-modal.waapi-done,
+.preset-modal.waapi-done,
+.ana-modal.waapi-done,
+.ios-guide-modal.waapi-done,
+.drawer.waapi-done {
+  animation: none !important;
+}
+
+/* ============================================================
+   浮层入场豁免（result-overlay 不走通用 .panel 飞入）
+   ------------------------------------------------------------
+   1.9.5 原版 style.css 的这 5 处通用 .panel 规则**没有** :not(.result-overlay)：
+     body.fx-anim / body.fx-switch 的 .page:not([hidden]) .panel:not(#leftPanel)
+   而浮层本身是 .panel，不排除它就会跟着页面从屏幕侧面飞入（fxInRight/fxFlyRight），
+   而不是本文件上面的原地淡入 fxOverlayIn。这里按 exp style.css 的写法补上豁免。
+   选择器/animation/延迟与 1.9.5 原版完全一致，只额外加上 :not(.result-overlay)。
+   ============================================================ */
+body.fx-anim #imageCanvasWrap,
+body.fx-anim #cameraCanvasWrap,
+body.fx-anim .page:not([hidden]) .panel:not(#leftPanel):not(.result-overlay) {
+  animation: fxInRight var(--dur) var(--ease-back) both;
+  animation-delay: 150ms;
+}
+body.fx-switch .page:not([hidden]) .panel:not(#leftPanel):not(.result-overlay) {
+  animation: fxInRight 300ms var(--ease-back) both;
+}
+body.fx-anim .page:not([hidden]) .panel:not(#leftPanel):not(.result-overlay) {
+  animation: fxFlyRight 340ms var(--ease-out) both;
+  animation-delay: 60ms;
+}
+body.fx-switch .page:not([hidden]) .panel:not(#leftPanel):not(.result-overlay) {
+  animation: fxFlyRight 300ms var(--ease-out) both;
+  animation-delay: 50ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  body.fx-anim #leftPanel,
+  body.fx-anim .page:not([hidden]) .panel:not(#leftPanel),
+  body.fx-anim .mask-opt,
+  body.fx-anim #detectBtn,
+  body.fx-anim .page-footer { animation: none !important; }
+  /* 浮层同体量 `!important` 且在本块内（同特异性、后出现者胜）：
+     盖过上面那条 fxOverlayIn !important 覆盖，让浮层在减少动效下也不播放入场动画。 */
+  body.fx-anim .page:not([hidden]) .result-overlay:not([hidden]),
+  body.fx-switch .page:not([hidden]) .result-overlay:not([hidden]) {
+    animation: none !important;
+  }
+}
+
+/* ============================================================
+   模式切换条（mode-switch）窄屏适配 — task-30
+   ------------------------------------------------------------
+   背景：tab 文字在 1.9.5 是 3 个（图片/摄像头/视频），本轮加了第 4 个
+   「异构双引擎级联」（7 字），自然宽度合计 ≈454px，超出 375 视口可用宽
+   （335px）→ flex 子项默认 flex-shrink:1 收缩 → 文字被迫折成 3~4 行。
+   用户要求：手机端也适配；文字不折行；必要时「拉长一点那个条」；
+   **动画不许坏**（1.9.5 的 body.fx-anim .mode-switch 用 fxInDown 从上方滑入）。
+   ------------------------------------------------------------
+   原则：只在这里做「叠加覆盖」，不改 1.9.5 原规则（style.css 必须逐字节一致）。
+   桌面（≥1024px）观感不变：内容不溢出时 overflow 不发生、条子仍 fit-content。
+   ============================================================ */
+
+/* 1) tab 文字一律不折行 + 不许收缩（宽度交给内容） */
+.mode-btn {
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+#tabCascade.mode-btn { flex-shrink: 0; }
+
+/* 2) 条子能横向容纳/滚动（内容超出时形成滚动容器，兜住不折行） */
+.mode-switch {
+  max-width: 100%;
+  overflow-x: auto;
+  /* overflow-y 必须显式 hidden：CSS 里一个轴不是 visible 时另一轴会算成 auto，
+     不写死可能冒出纵向滚动条或裁掉内容 */
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch; /* iOS 惯性 */
+  scrollbar-width: none;             /* Firefox 隐藏滚动条 */
+}
+.mode-switch::-webkit-scrollbar { display: none; } /* WebKit 隐藏滚动条 */
+
+/* 3) 窄屏收紧内边距/字号，尽量一屏放下（配合第 2 条滚动兜底，绝不折行） */
+@media (max-width: 480px) {
+  .mode-switch { gap: 4px; }
+  .mode-btn {
+    padding: 8px 9px;
+    font-size: 12.5px;
+  }
+  /* 唯一长标签单独再收一点，避免它是唯一超出者 */
+  #tabCascade.mode-btn { padding-left: 7px; padding-right: 7px; }
+}
+@media (max-width: 380px) {
+  .mode-btn { padding: 8px 7px; font-size: 12px; }
+}
+
+/* 4) 尊重 prefers-reduced-motion —— 补 1.9.5 的缺口。
+   1.9.5 的 reduce 块（style.css L399/L2369/L2670/L3262）都没覆盖 .mode-switch，
+   所以 body.fx-anim .mode-switch 的 fxInDown 本来在 reduce 下也照播。
+   这里补一条同特异性、后出现者胜的关闭规则，让减少动效用户也不播入场动画。
+   不改 style.css（必须与 1.9.5 逐字节一致），所以在 features.css 里补。 */
+@media (prefers-reduced-motion: reduce) {
+  body.fx-anim .mode-switch,
+  body.fx-switch .mode-switch { animation: none !important; }
+}
+
+/* 5) 版本号结尾的 "Next" —— 加粗 + exp 主题色渐变凸显（V1.9 Next）。
+   index.html 的 #versionLabel 由 js/pwa.js 的 syncVersionLabel() 动态渲染成
+   "v1.9 <span class='next-badge'>Next</span>"（安装版再在徽章外接 "(p)"）。
+   渐变只作用在徽章（Next）上，(p) 后缀是普通灰字，保持 `.page-meta` 原有观感。
+   颜色走 :root 的 --accent-2（紫）→ --accent-3（青蓝），配项目整体蓝紫玻璃气质。 */
+#versionLabel .next-badge {
+  font-weight: 700;
+  background: linear-gradient(120deg, var(--accent-2), var(--accent-3));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}

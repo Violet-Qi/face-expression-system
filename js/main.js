@@ -34,24 +34,33 @@ function renderView() {
   const isImg    = (mode === 'image');
   const cam      = (mode === 'camera');
   const isVid    = (mode === 'video');
+  const isCas    = (mode === 'cascade');
   const hasImage = images.length > 0;
   const multi    = images.length > 1;
-
-  /* ---- 1. 页面：三种模式各一整页，整块切换 ---- */
-  pageImage.hidden  = !isImg;
-  pageCamera.hidden = !cam;
-  pageVideo.hidden  = !isVid;
+  /* ---- 1. 页面：四种模式各一整页，整块切换 ---- */
+  pageImage.hidden   = !isImg;
+  pageCamera.hidden  = !cam;
+  pageVideo.hidden   = !isVid;
+  pageCascade.hidden = !isCas;
   tabImage.classList.toggle('is-active', isImg);
   tabCamera.classList.toggle('is-active', cam);
   tabVideo.classList.toggle('is-active', isVid);
+  tabCascade.classList.toggle('is-active', isCas);
 
-  /* ---- 2. 顶部状态 / 主按钮 / 信息区标题（三页共用，文案随模式变）---- */
-  infoTitle.textContent = cam ? '实时识别信息' : (isVid ? '视频分析信息' : '表情识别信息');
+  /* ---- 2. 顶部状态 / 主按钮 / 信息区标题（页面共用，文案随模式变）---- */
+  // infoTitle 内嵌 #infoExpBtn（阈值对比实验按钮），不能整体赋值 textContent，
+  // 否则会把那个按钮抹掉。只改内嵌的标题文字节点 #infoTitleText。
+  const _itText = document.getElementById('infoTitleText');
+  if (_itText) {
+    _itText.textContent = cam ? '实时识别信息' : (isVid ? '视频分析信息' : (isCas ? '级联识别信息' : '表情识别信息'));
+  }
+  // 拿不到 #infoTitleText 就什么都不改（标题文案保持原样），绝不回退整体赋值 textContent，
+  // 否则会抹掉 #infoTitle 内嵌的 #infoExpBtn。
 
-  // 主按钮三个页面共用。
+  // 主按钮三个页面共用；级联页有自己的「开始识别」按钮（在页面里），隐藏主按钮。
   // 曾经这里写成 detectBtn.hidden = isVid —— 而视频页的提示却写着"点下方「开始分析」"，
   // 结果那个按钮根本不存在，analyzeVideo() 从来没有被调用过，视频功能完全无法启动。
-  detectBtn.hidden = false;
+  detectBtn.hidden = isCas;
 
   // 主按钮文案要分清三个模式：
   //   · 图片模式        → 开始识别
@@ -78,6 +87,7 @@ function renderView() {
   resultImg.hidden         = !ui.resultShown;
   overlay.hidden           = !ui.resultShown;
   resultPlaceholder.hidden = ui.resultShown;
+  resultOverlay.hidden     = !ui.resultShown;   // 整个结果浮层随 resultShown 显隐
 
   /* ---- 5. 摄像头画面：出图时显示 video + 画布，否则显示占位提示 ---- */
   video.hidden             = !ui.cameraLive;
@@ -104,6 +114,30 @@ function renderView() {
 
   /* ---- 10. 上传预览图上的打码层（左侧也要脱敏，否则"右边打码左边露脸"）---- */
   renderPreviewMask();
+
+  /* ---- 11. 共用信息区归位：图片模式拉进右列，其它模式放回下方固定处 ---- */
+  placeSharedInfo(isImg);
+}
+
+/**
+ * 图片页布局重构：把共用的信息区（识别信息 / 累计统计 / 表情趋势）在
+ * 图片模式时移进右列 .info-right-col，其它模式移回页面下方的固定锚点。
+ *
+ * 这些区块是被所有模式共用的（数据跨模式累加），所以只能整体移动、**不能克隆**。
+ * 移动的是同一个 DOM 节点（#sharedInfo），引用它的 infoContent/statsContent/
+ * trendCanvas 等常量不受影响 —— 它们指向元素本身，元素被搬走引用仍有效。
+ */
+function placeSharedInfo(_imageMode) {
+  const shared = document.getElementById('sharedInfo');
+  const rightCol = document.getElementById('infoRightCol');
+  const home = document.getElementById('sharedInfoHome');
+  if (!shared || !home) return;
+
+  if (_imageMode) {
+    if (rightCol && shared.parentNode !== rightCol) rightCol.appendChild(shared);
+  } else {
+    if (shared.parentNode !== home) home.appendChild(shared);
+  }
 }
 
 /**
@@ -115,11 +149,24 @@ function renderView() {
  *
  * 注意：不能简单给 height 设 auto —— auto 不参与 transition。
  * 标准做法是「先设起始高度 → 强制回流 → 再设目标高度 → 动画结束后清掉内联值」。
+ *
+ * 可重入：在途动画会被取消（清 timer / transitionend 监听 / 内联高度），
+ * 并把手柄存到 el._heightAnimCleanup，供下一段动画或图片页复用。
  */
 function animatePageHeight(el, fromHeight) {
-  const targetHeight = el.scrollHeight;      // 此刻 height 还是 auto，取到的是自然高度
+  if (typeof el._heightAnimCleanup === 'function') el._heightAnimCleanup();  // 取消在途一段
+
+  // 量自然高度：若元素被旧内联高度锁住（图片页在选图前用 pinPageHeight 锁了 fromHeight），
+  // 直接读 scrollHeight 会读到锁定的盒子高度而非内容自然高度（缩回时尤其明显）。
+  // 做法：临时清掉内联 height → 同步读 scrollHeight（布局同步，不落笔）→ 立刻写回旧值。
+  const savedH = el.style.height;
+  el.style.height = '';
+  const targetHeight = el.scrollHeight;
+  el.style.height = savedH;
+
   if (!fromHeight || Math.abs(fromHeight - targetHeight) < 1) {
     el.style.height = '';                    // 高度没变，不需要动画
+    el.classList.remove('is-animating');
     return;
   }
 
@@ -135,10 +182,64 @@ function animatePageHeight(el, fromHeight) {
     finished = true;
     el.style.height = '';
     el.classList.remove('is-animating');
+    el._heightAnimCleanup = null;            // 已完成，清掉句柄
     clearTimeout(timer);
+    el.removeEventListener('transitionend', finish);
   };
   const timer = setTimeout(finish, 400);
+  el._heightAnimCleanup = () => {            // 可重入：取消当前在途动画
+    clearTimeout(timer);
+    el.removeEventListener('transitionend', finish);
+    el.style.height = '';
+    el.classList.remove('is-animating');
+    el._heightAnimCleanup = null;
+    finished = true;
+  };
   el.addEventListener('transitionend', finish, { once: true });
+}
+
+/**
+ * 把页面容器暂时锁在 fromHeight，避免换图/清空瞬间高度跳变（一闪）。
+ * 之后由 animateImagePageHeight 在图片解码后播过渡。
+ */
+function pinPageHeight(pageEl, fromHeight) {
+  if (!pageEl || !fromHeight) return;
+  pageEl.style.height = fromHeight + 'px';
+  void pageEl.offsetHeight;      // 强制回流，让浏览器认下起始值，避免闪
+}
+
+/**
+ * 等待 img 真正解码（naturalWidth 有了）后，把 pageEl 从 fromHeight 平滑过渡到自然高度。
+ *
+ * 为什么必须等解码：sourceImg.src 设完那一刻 naturalHeight 还是 0，此刻量目标高度
+ * 差值算成 0，动画根本不播。等 img.decode()（或 load 兜底）后再量、再播。
+ *
+ * @param {HTMLElement} pageEl     页面容器（.page）
+ * @param {number}      fromHeight 起始高度（改动前量好的）
+ * @param {string}      imgId      触发高度变化的 img 元素 id（sourceImg / cascadeSourceImg）
+ * @param {number}      cooldownMs 解码完成后的微小缓冲（gif 等 decode reject 时兜底等待）
+ */
+function animateImagePageHeight(pageEl, fromHeight, imgId, cooldownMs) {
+  if (!pageEl) return;
+  const img = document.getElementById(imgId);
+  const run = () => {
+    if (typeof animatePageHeight === 'function') {
+      // animatePageHeight 内部读取 el.scrollHeight 作为目标，并把 pageEl 从 fromHeight 过渡过去
+      animatePageHeight(pageEl, fromHeight);
+    }
+  };
+  if (img && typeof img.decode === 'function') {
+    img.decode().then(run).catch(() => setTimeout(run, cooldownMs == null ? 60 : cooldownMs));
+  } else if (img) {
+    // 无 decode API（老浏览器）：等 load 事件，带超时兜底
+    const done = () => run();
+    if (img.complete && img.naturalWidth > 0) { done(); return; }
+    img.addEventListener('load', done, { once: true });
+    img.addEventListener('error', done, { once: true });
+    setTimeout(done, 1500);
+  } else {
+    setTimeout(run, cooldownMs == null ? 60 : cooldownMs);
+  }
 }
 
 /**
@@ -158,7 +259,7 @@ function animatePageHeight(el, fromHeight) {
  * @param {boolean} animate 是否做高度过渡（启动时不需要，切换时需要）
  */
 function applyView(animate) {
-  const pages = { image: pageImage, camera: pageCamera, video: pageVideo };
+  const pages = { image: pageImage, camera: pageCamera, video: pageVideo, cascade: pageCascade };
   const to = pages[mode] || pageImage;                 // 即将显示的那一页
 
   // 找出当前正在显示、且不是目标的那一页（用于取旧高度做过渡）
@@ -223,7 +324,7 @@ function startLeaveFx(oldPage, oldMode, newMode) {
   oldPage.classList.add('is-leaving');
 
   // 往哪飞：新页在右边 → 旧页向左飞；新页在左边 → 旧页向右飞
-  const order = { image: 0, camera: 1, video: 2 };
+  const order = { image: 0, camera: 1, video: 2, cascade: 3 };
   const goRight = (order[newMode] || 0) < (order[oldMode] || 0);
   oldPage.classList.add(goRight ? 'fx-out-right' : 'fx-out-left');
 
@@ -276,6 +377,10 @@ function switchMode(target) {
       false
     );
 
+  } else if (target === 'cascade') {
+    if (typeof cascadeShow === 'function') cascadeShow();
+    showInfo('这是实验性的异构双引擎级联：face-api 判定 + MediaPipe 强度。点「开始识别」运行。', false);
+
   } else {
     if (!lastResults) showInfo('尚未开始识别。', false);
   }
@@ -316,6 +421,7 @@ function updateButtonState() {
 tabImage.addEventListener('click', () => switchMode('image'));
 tabCamera.addEventListener('click', () => switchMode('camera'));
 tabVideo.addEventListener('click', () => switchMode('video'));
+tabCascade.addEventListener('click', () => switchMode('cascade'));
 
 // 视频文件：选片 / 中止分析
 pickVideoBtn.addEventListener('click', () => videoInput.click());
@@ -338,6 +444,18 @@ nextBtn.addEventListener('click', () => gotoNextImage());
 
 // 选完图之后，图片本身也可以再点一次直接换图 —— 否则用户会觉得"卡住了没法换"
 sourceImg.addEventListener('click', () => fileInput.click());
+
+// 识别结果浮层的「← 返回上传图片」：收起结果，回到上传态
+if (typeof backToUploadBtn !== 'undefined' && backToUploadBtn) {
+  backToUploadBtn.addEventListener('click', () => {
+    try {
+      ui.resultShown = false;
+      renderView();
+    } catch (err) {
+      console.error('[返回上传] 收起识别结果失败：', err);
+    }
+  });
+}
 
 dropInner.addEventListener('click', e => {
   if (e.target.id === 'dropInner' || e.target.classList.contains('drop-icon') ||
@@ -559,6 +677,14 @@ try {
   applyView(false);            // false = 启动时不做高度动画
 } catch (err) {
   console.error("[启动] 界面初始化失败：", err);
+}
+
+// 级联页事件绑定（cascade-view.js 提供；该脚本在 main.js 之前加载）。
+// 用 typeof 兜底：即使 cascade-view.js 因缓存缺失未加载，也不会把启动流程打断。
+if (typeof bindCascadeEvents === 'function') {
+  try { bindCascadeEvents(); } catch (err) {
+    console.error("[启动] 级联页事件绑定失败：", err);
+  }
 }
 
 // 匿名统计：先探一次后端在不在（只用 Python 起静态服务时会探不到，那就静默关掉）

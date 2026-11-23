@@ -1,5 +1,5 @@
 /* ============================================================
-   PWA 安装与离线状态（v1.9.5）
+   PWA 安装与离线状态（v1.9 Next）
    ------------------------------------------------------------
    做三件事：
      ① 注册 Service Worker —— 让页面可以离线运行
@@ -247,28 +247,35 @@ function initPWA() {
     console.log('[PWA] 以独立应用模式运行');
   }
 
-  /* ⑦ 页头版本号：安装版显示 "v1.9.5(p)"，网页版显示 "v1.9.5" */
+  /* ⑦ 页头版本号：安装版显示 "v1.9 Next(p)"，网页版显示 "v1.9 Next" */
   syncVersionLabel();
 }
 
 /**
  * 版本号显示区分：
- *   普通网页    v1.9.5
- *   装到桌面的  v1.9.5(p)   —— p = PWA，一眼看出是应用版
+ *   普通网页    v1.9 Next
+ *   装到桌面的  v1.9 Next(p)   —— p = PWA，一眼看出是应用版
  */
 function syncVersionLabel() {
   const el = document.getElementById('versionLabel');
   if (!el) return;
 
+  // 从已有文本取基础版本号（去掉 (p) 后缀），如 "v1.9 Next"
   const base = el.dataset.base || el.textContent.replace(/\(p\)$/, '');
   el.dataset.base = base;
 
+  // 把结尾的 "Next" 拆出来做成渐变徽章，其余保持普通文本
+  const m = base.match(/^(.*?\s)(Next)\s*$/i);
+  const inner = m
+    ? m[1] + '<span class="next-badge">' + m[2] + '</span>'
+    : base;
+
   if (pwaEnv().isStandalone) {
-    el.textContent = base + '(p)';
+    el.innerHTML = inner + '(p)';
     el.title = '已安装为桌面应用（PWA）';
     el.classList.add('is-pwa');
   } else {
-    el.textContent = base;
+    el.innerHTML = inner;
     el.title = '网页版';
     el.classList.remove('is-pwa');
   }

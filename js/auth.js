@@ -25,6 +25,8 @@ let currentUser = null;
 let authAvailable = false;
 /** 本次游客是否已经用掉体验机会 */
 let guestUsed = false;
+/** 关闭收尾防抖 token：重开时自增，让旧 settle 定时器作废 */
+let _authSettleToken = 0;
 
 function curUser() { return currentUser; }
 function isLoggedIn() { return !!currentUser; }
@@ -304,6 +306,10 @@ function openAuthPanel(reason) {
     return;
   }
 
+  /* 真正要打开面板了：作废任何 pending 的「关闭收尾」定时器，
+     否则重开时旧的 settle 会误把刚打开的遮罩强关。 */
+  ++_authSettleToken;
+
   /* 从按钮展开：主动点击（无 reason 或 reason 为 welcome 手动打开）时，
      用 openFromButton 从 authBtn 展开；游客门禁等自动触发（guest-used/need-login）
      没有明确的按钮，走默认 spring 落位（.is-open） */
@@ -354,12 +360,56 @@ function openAuthPanel(reason) {
   }, 80);
 }
 
+/* 幂等收尾：无论从哪个入口关，都保证 #authMask / #authPanel 复位到干净态。
+   —— 为什么必须独立于 WAAPI onfinish：
+      closeFromButton 的遮罩清理（remove is-closing / hidden）写在 close 动画的
+      anim.onfinish 里；一旦用户「关闭中又立刻重开」或「连点两次关闭」，
+      _cancelModalAnim 会 cancel 掉在跑的关闭动画，其 onfinish 不触发 →
+      #authMask 就带着 is-open / is-closing + display:block 残留，把整页点击全拦了。
+      本函数不依赖动画回调，拿到遮罩就立即复位；拿不到也绝不抛错。 */
+function settleAuthDismiss() {
+  const token = _authSettleToken;
+  const mask = document.getElementById('authMask');
+  const panel = document.getElementById('authPanel');
+
+  // token 已变说明期间又重开了面板，绝不能按"关闭"去强关它
+  if (token !== _authSettleToken) return;
+
+  if (mask) {
+    mask.classList.remove('is-open', 'is-closing');
+    mask.hidden = true;
+  }
+  if (panel) {
+    panel.classList.remove('is-open', 'is-closing');
+    panel.hidden = true;
+    panel.setAttribute('aria-hidden', 'true');
+  }
+  if (typeof lockPageScroll === 'function') {
+    try { lockPageScroll(false); } catch (e) {}
+  }
+  const err = document.getElementById('authError');
+  if (err) { err.hidden = true; err.textContent = ''; }
+}
+
 function closeAuthPanel() {
   const mask = document.getElementById('authMask');
   const panel = document.getElementById('authPanel');
   if (!mask || !panel) return;
   if (panel.hidden) return;          // 已经关了就别重复播
-  if (typeof closeFromButton === 'function') { closeFromButton(panel); return; }
+
+  /* 每次关闭自增 token：如果在这期间又被重开（openAuthPanel 也自增），
+     settleAuthDismiss 会看到 token 不对，从而不把刚打开的面板误关。 */
+  ++_authSettleToken;
+  const token = _authSettleToken;
+
+  if (typeof closeFromButton === 'function') {
+    /* closeFromButton 把遮罩清理放在动画 onfinish 里，cancel 时会被跳过。
+       所以等关动画（DUR_CLOSE=360ms）结束后再补一次幂等兜底：遮罩若仍残留
+       （onfinish 没跑到）就立即复位。动画被取消时 onfinish 不跑，这层兜底兜住它。 */
+    closeFromButton(panel);
+    setTimeout(() => { if (token === _authSettleToken) settleAuthDismiss(); }, 420);
+    return;
+  }
 
   /* 关闭必须有动画，不能"啪"地消失。
      做法：先挂 .is-closing 播退场关键帧（240ms），
@@ -382,6 +432,7 @@ function closeAuthPanel() {
   else setTimeout(done, 240);
 
   lockPageScroll(false);
+  setTimeout(() => { if (token === _authSettleToken) settleAuthDismiss(); }, 420);
   const err = document.getElementById('authError');
   if (err) { err.hidden = true; err.textContent = ''; }
 }

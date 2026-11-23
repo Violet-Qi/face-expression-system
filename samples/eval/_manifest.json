@@ -1,0 +1,212 @@
+[
+  {
+    "file": "samples/eval/angry_01.jpg",
+    "expression": "angry",
+    "source": "test/angry/PrivateTest_10131363.jpg",
+    "bytes": 1722
+  },
+  {
+    "file": "samples/eval/angry_02.jpg",
+    "expression": "angry",
+    "source": "test/angry/PrivateTest_10304478.jpg",
+    "bytes": 1686
+  },
+  {
+    "file": "samples/eval/angry_03.jpg",
+    "expression": "angry",
+    "source": "test/angry/PrivateTest_1054527.jpg",
+    "bytes": 1257
+  },
+  {
+    "file": "samples/eval/angry_04.jpg",
+    "expression": "angry",
+    "source": "test/angry/PrivateTest_10590091.jpg",
+    "bytes": 1642
+  },
+  {
+    "file": "samples/eval/angry_05.jpg",
+    "expression": "angry",
+    "source": "test/angry/PrivateTest_1109992.jpg",
+    "bytes": 1804
+  },
+  {
+    "file": "samples/eval/disgust_01.jpg",
+    "expression": "disgust",
+    "source": "test/disgust/PrivateTest_11895083.jpg",
+    "bytes": 1616
+  },
+  {
+    "file": "samples/eval/disgust_02.jpg",
+    "expression": "disgust",
+    "source": "test/disgust/PrivateTest_19671520.jpg",
+    "bytes": 1560
+  },
+  {
+    "file": "samples/eval/disgust_03.jpg",
+    "expression": "disgust",
+    "source": "test/disgust/PrivateTest_21629266.jpg",
+    "bytes": 1729
+  },
+  {
+    "file": "samples/eval/disgust_04.jpg",
+    "expression": "disgust",
+    "source": "test/disgust/PrivateTest_22382996.jpg",
+    "bytes": 1646
+  },
+  {
+    "file": "samples/eval/disgust_05.jpg",
+    "expression": "disgust",
+    "source": "test/disgust/PrivateTest_26306320.jpg",
+    "bytes": 1256
+  },
+  {
+    "file": "samples/eval/fear_01.jpg",
+    "expression": "fear",
+    "source": "test/fear/PrivateTest_10153550.jpg",
+    "bytes": 1821
+  },
+  {
+    "file": "samples/eval/fear_02.jpg",
+    "expression": "fear",
+    "source": "test/fear/PrivateTest_10254684.jpg",
+    "bytes": 1609
+  },
+  {
+    "file": "samples/eval/fear_03.jpg",
+    "expression": "fear",
+    "source": "test/fear/PrivateTest_10306709.jpg",
+    "bytes": 2397
+  },
+  {
+    "file": "samples/eval/fear_04.jpg",
+    "expression": "fear",
+    "source": "test/fear/PrivateTest_10555537.jpg",
+    "bytes": 1572
+  },
+  {
+    "file": "samples/eval/fear_05.jpg",
+    "expression": "fear",
+    "source": "test/fear/PrivateTest_10629254.jpg",
+    "bytes": 1625
+  },
+  {
+    "file": "samples/eval/happy_01.jpg",
+    "expression": "happy",
+    "source": "test/happy/PrivateTest_10077120.jpg",
+    "bytes": 1616
+  },
+  {
+    "file": "samples/eval/happy_02.jpg",
+    "expression": "happy",
+    "source": "test/happy/PrivateTest_10470092.jpg",
+    "bytes": 1626
+  },
+  {
+    "file": "samples/eval/happy_03.jpg",
+    "expression": "happy",
+    "source": "test/happy/PrivateTest_10513598.jpg",
+    "bytes": 1863
+  },
+  {
+    "file": "samples/eval/happy_04.jpg",
+    "expression": "happy",
+    "source": "test/happy/PrivateTest_10516065.jpg",
+    "bytes": 1926
+  },
+  {
+    "file": "samples/eval/happy_05.jpg",
+    "expression": "happy",
+    "source": "test/happy/PrivateTest_10613684.jpg",
+    "bytes": 1666
+  },
+  {
+    "file": "samples/eval/neutral_01.jpg",
+    "expression": "neutral",
+    "source": "test/neutral/PrivateTest_10086748.jpg",
+    "bytes": 1224
+  },
+  {
+    "file": "samples/eval/neutral_02.jpg",
+    "expression": "neutral",
+    "source": "test/neutral/PrivateTest_10767287.jpg",
+    "bytes": 1759
+  },
+  {
+    "file": "samples/eval/neutral_03.jpg",
+    "expression": "neutral",
+    "source": "test/neutral/PrivateTest_11123843.jpg",
+    "bytes": 1256
+  },
+  {
+    "file": "samples/eval/neutral_04.jpg",
+    "expression": "neutral",
+    "source": "test/neutral/PrivateTest_11164800.jpg",
+    "bytes": 1411
+  },
+  {
+    "file": "samples/eval/neutral_05.jpg",
+    "expression": "neutral",
+    "source": "test/neutral/PrivateTest_11239107.jpg",
+    "bytes": 1393
+  },
+  {
+    "file": "samples/eval/sad_01.jpg",
+    "expression": "sad",
+    "source": "test/sad/PrivateTest_10247676.jpg",
+    "bytes": 1429
+  },
+  {
+    "file": "samples/eval/sad_02.jpg",
+    "expression": "sad",
+    "source": "test/sad/PrivateTest_10455506.jpg",
+    "bytes": 1799
+  },
+  {
+    "file": "samples/eval/sad_03.jpg",
+    "expression": "sad",
+    "source": "test/sad/PrivateTest_10658656.jpg",
+    "bytes": 1667
+  },
+  {
+    "file": "samples/eval/sad_04.jpg",
+    "expression": "sad",
+    "source": "test/sad/PrivateTest_10702106.jpg",
+    "bytes": 1652
+  },
+  {
+    "file": "samples/eval/sad_05.jpg",
+    "expression": "sad",
+    "source": "test/sad/PrivateTest_10814167.jpg",
+    "bytes": 1624
+  },
+  {
+    "file": "samples/eval/surprise_01.jpg",
+    "expression": "surprise",
+    "source": "test/surprise/PrivateTest_10072988.jpg",
+    "bytes": 1691
+  },
+  {
+    "file": "samples/eval/surprise_02.jpg",
+    "expression": "surprise",
+    "source": "test/surprise/PrivateTest_10089743.jpg",
+    "bytes": 1604
+  },
+  {
+    "file": "samples/eval/surprise_03.jpg",
+    "expression": "surprise",
+    "source": "test/surprise/PrivateTest_104142.jpg",
+    "bytes": 1604
+  },
+  {
+    "file": "samples/eval/surprise_04.jpg",
+    "expression": "surprise",
+    "source": "test/surprise/PrivateTest_10427382.jpg",
+    "bytes": 1817
+  },
+  {
+    "file": "samples/eval/surprise_05.jpg",
+    "expression": "surprise",
+    "source": "test/surprise/PrivateTest_10712253.jpg",
+    "bytes": 1556
+  }
+]

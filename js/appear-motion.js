@@ -108,6 +108,10 @@ function openFromButton(modal, mask, trigger) {
   // 取消任何在跑的关闭/打开动画
   _cancelModalAnim(modal);
 
+  // 作废任何 pending 的「关闭收尾」watchdog：一旦重开，旧的 settle 不得强关刚打开的弹窗。
+  // 每个弹窗独立计数，互不影响。
+  modal._closeToken = (modal._closeToken || 0) + 1;
+
   // 起点：显式传入 > 最近点击
   let rect = null;
   if (trigger && trigger.nodeType === 1) {
@@ -177,6 +181,10 @@ function closeFromButton(modal) {
   if (!modal) return;
   const mask = modal._maskObj || null;
 
+  // 本次关闭的 epoch：若期间又重开（openFromButton 已自增），此关闭已作废，
+  // settle 不得强关刚打开的面板。
+  const token = (modal._closeToken = (modal._closeToken || 0) + 1);
+
   // 读取当前状态（开启动画可能仍在跑）
   const cur = getComputedStyle(modal);
   const current = {
@@ -209,18 +217,58 @@ function closeFromButton(modal) {
   );
   modal._anim = anim;
 
+  /* —— 统一幂等收尾 ——
+     V1.9.EXP (task-14)：遮罩/面板的清理原先只写在 anim.onfinish 里。
+     onfinish 在动画正常结束才触发；一旦用户「关闭中立刻重开」或「连点两次关闭」，
+     _cancelModalAnim(modal) 会 cancel 掉在跑的关闭动画 → onfinish 永不触发 →
+     遮罩残留 is-open / is-closing + display:block + pointer-events:auto，z-index 遮全屏
+     拦掉整页点击（#authMask 于 task-13 发现，本函数同样影响 #anaModal/#presetModal/#changelogModal）。
+     解决：把收尾抽成幂等函数 settle()/doSettle()，从三条路都保证恰好执行一次：
+       1) anim.onfinish —— 动画正常结束
+       2) anim.finished.catch —— 动画被 cancel / 中断时，Promise reject 也会进这里
+       3) watchdog setTimeout —— 兜底（万一上面都没跑到）
+     收尾只做复位：摘 is-open/is-closing、hidden、aria-hidden、解锁滚动。幂等（重复调用无副作用）、
+     拿不到元素不抛错、本函数的 else CSS fallback 分支（其它弹层自己的 done()）不受影响，
+     auth.js 的 token+settleAuthDismiss 仍在，与本函数互为兜底。 */
+  const settle = () => {
+    if (token !== modal._closeToken) return;   // 已作废：期间重开了
+    if (modal) {
+      modal.classList.remove('is-open', 'is-closing');
+      modal.hidden = true;
+      modal.setAttribute('aria-hidden', 'true');
+    }
+    if (mask) {
+      mask.classList.remove('is-open', 'is-closing');
+      mask.hidden = true;
+    }
+    if (typeof lockPageScroll === 'function') {
+      try { lockPageScroll(false); } catch (e) {}
+    }
+  };
+
+  let settled = false;
+  const doSettle = () => {
+    if (settled) return;       // 幂等：三条路只执行一次
+    settled = true;
+    try { settle(); } catch (e) {}
+    modal._settleTimer = null;
+  };
+
   anim.onfinish = () => {
-    modal.classList.remove('is-open');
-    modal.classList.add('is-closing');
-    modal.hidden = true;
-    modal.setAttribute('aria-hidden', 'true');
-    if (mask) { mask.classList.remove('is-closing'); mask.hidden = true; }
-    // 弹窗关闭完成，解锁背景滚动（打开时 lockPageScroll(true) 锁了，这里必须解锁）
-    if (typeof lockPageScroll === 'function') lockPageScroll(false);
-    try { anim.cancel(); } catch(e){}
+    // 正常结束：锁定面板保持已关闭的最终视觉（.is-open 摘掉即可），再走统一收尾
+    doSettle();
+    try { anim.cancel(); } catch (e) {}
     modal._anim = null;
     modal._openStart = null;
   };
+
+  // 动画被 cancel 时 onfinish 不触发，但 anim.finished 的 Promise 会 reject → 走同一条收尾
+  if (anim.finished && typeof anim.finished.catch === 'function') {
+    anim.finished.catch(() => { doSettle(); });
+  }
+
+  // watchdog：无论上面哪条没跑到，DUR_CLOSE 之后一定收尾（覆盖 cancel 时 finished 也未 reject 的边角）
+  modal._settleTimer = setTimeout(doSettle, _dur(DUR_CLOSE) + 80);
 }
 
 /* ---------------- 自启动 ---------------- */

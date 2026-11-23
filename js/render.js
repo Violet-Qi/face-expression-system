@@ -325,7 +325,10 @@ function renderPreviewMask() {
 
 /** 图片模式：在下方信息框输出每张人脸的类别与置信度 */
 function renderInfo(results, costMs, groups) {
-  infoTitle.textContent = '表情识别信息';
+  // 只改标题文字节点 #infoTitleText，别对 #infoTitle 整体赋值 ——
+  // 那会连同 #infoExpBtn（阈值对比实验按钮）一起抹掉。拿不到 span 就跳过，不改标题。
+  const itText = document.getElementById('infoTitleText');
+  if (itText) itText.textContent = '表情识别信息';
   infoContent.innerHTML = '';
 
   const summary = document.createElement('p');

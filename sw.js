@@ -28,8 +28,10 @@
        · 用 skipWaiting + clients.claim 让新 SW 立即接管
    ============================================================ */
 
-/* ⚠️ 每次发版必须改这里，改成和 index.html 的 ?v= 一致的版本号 */
-const CACHE_VERSION = 'v1.9.5(p)-19';
+/* ⚠️ 每次发版必须改这里的序号（p)-N 递增；它和 index.html 的 ?v= 是两个概念：
+      ?v= 管单个文件的缓存键，CACHE_VERSION 管整个 SW 缓存代际。格式不必相同。 */
+/* 显示名 v1.9 Next；缓存令牌用无空格的 1.9next（空格在 URL/cache key 里会变成 %20） */
+const CACHE_VERSION = 'v1.9next(p)-6';
 const CACHE_NAME = 'qianyan-' + CACHE_VERSION;
 
 /* ① 核心层：安装时就要缓存好的（约 10 MB） */
@@ -39,7 +41,7 @@ const CORE_ASSETS = [
   './admin.html',
   './manifest.json',
   './css/style.css',
-  './css/anim.css',
+  './css/features.css',
   './css/admin.css',
   './assets/logo.svg',
   './assets/icon-192.png',
@@ -70,6 +72,8 @@ const CORE_ASSETS = [
   './js/admin.js',
   './js/appear-motion.js',
   './js/pwa.js',
+  './js/cascade-engine.js',
+  './js/cascade-view.js',
 
   /* 推理引擎本体 */
   './lib/face-api.js',
